@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/pulsemcp%2Faaronjmars-opendia.svg)](https://mcptoplist.com/server/pulsemcp%2Faaronjmars-opendia)
+
 <p align="center">
   <img src="../opendia-extension/icons/icon-128.png" alt="OpenDia" width="120" />
 </p>
