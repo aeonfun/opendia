@@ -11,7 +11,7 @@
     "tunnel": "node server.js --tunnel",
     "sse-only": "node server.js --sse-only",
     "tunnel-sse": "node server.js --tunnel --sse-only",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --check server.js && node test-protocol.js && node test-connection.js"
   },
   "keywords": [
     "mcp",

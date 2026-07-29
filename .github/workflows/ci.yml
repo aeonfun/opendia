@@ -22,6 +22,10 @@ jobs:
       - run: npm ci
       - name: Syntax-check server
         run: node --check server.js
+      - name: Protocol tests
+        run: node test-protocol.js
+      - name: Connection tests
+        run: node test-connection.js
 
   extension:
     name: Browser extension
