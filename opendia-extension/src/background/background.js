@@ -82,10 +82,8 @@ class ConnectionManager {
       // Try port discovery if using default URL or if connection failed
       if (MCP_SERVER_URL === 'ws://localhost:5555' || this.reconnectAttempts > 2) {
         await this.discoverServerPorts();
-        // No reset here: discovery finding a port is not evidence the
-        // connection succeeded. Resetting made the counter oscillate 0->3->0,
-        // so backoff never grew and the give-up guard was unreachable. The
-        // real reset lives in onopen.
+        // Deliberately no reset: finding a port is not evidence the connection
+        // opened. The reset lives in onopen so backoff can actually grow.
       }
 
       console.log('🔗 Connecting to MCP server at', MCP_SERVER_URL);
@@ -1125,7 +1123,7 @@ async function handleMCPRequest(message) {
   }
 }
 
-// Enhanced content script communication with background tab support
+// Content script communication, targeting a specific tab or the active one
 // Resolve the tab a tool should act on: an explicit tab id, else the active tab.
 async function resolveTargetTab(tabId = null) {
   if (tabId) {
@@ -1214,7 +1212,7 @@ async function waitForElement(tabId, selector, timeout = 5000) {
   throw new Error(`Timeout waiting for element: ${selector}`);
 }
 
-// Enhanced Tab Management Functions with Batch Support
+// Tab management, single and batched
 async function createTab(params) {
   const { 
     url, 
@@ -1250,7 +1248,7 @@ async function createTab(params) {
     const urlArray = Array(count).fill(url);
     return await createTabsBatch(urlArray, active, wait_for, timeout, batch_settings);
   } else {
-    // Single tab creation (legacy behavior)
+    // Single tab creation
     console.log(`📱 Using single tab mode for: ${url || 'about:blank'}`);
     return await createSingleTab(url, active, wait_for, timeout);
   }
@@ -1302,7 +1300,7 @@ function validateTabCreateParams(params) {
   return { valid: true };
 }
 
-// Single tab creation (original behavior)
+// Single tab creation
 async function createSingleTab(url, active, wait_for, timeout) {
   const createProperties = { active };
   if (url) {
@@ -1917,8 +1915,8 @@ async function getSelectedText(params) {
     return response;
 
   } catch (error) {
-    // These used to return has_selection: false, which formatSelectedTextResult
-    // renders as "No text selected" — a failure was reported as an empty page.
+    // Throw rather than returning has_selection:false, which the formatter
+    // renders as "No text selected" - a failure indistinguishable from success.
     throw new Error(`Failed to get selected text: ${error.message}`);
   }
 }
@@ -2000,8 +1998,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       tools: tools.map(t => t.name)
     });
   } else if (request.action === "reconnect") {
-    // Report the real outcome: this used to answer success before the socket
-    // had opened, so the popup's reconnect button always looked like it worked.
+    // Answer after the socket opens, not before, so the popup reports the
+    // real outcome rather than always looking successful.
     connectionManager.connect()
       .then(() => sendResponse({ success: true }))
       .catch((error) => sendResponse({ success: false, error: error.message }));

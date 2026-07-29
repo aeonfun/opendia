@@ -398,7 +398,7 @@ async function handleMCPRequest(request) {
   }
 }
 
-// Enhanced tool result formatting with anti-detection support
+// Tool result formatting
 function formatToolResult(toolName, result) {
   const metadata = {
     tool: toolName,
@@ -465,7 +465,7 @@ function formatToolResult(toolName, result) {
       return formatPageStyleResult(result, metadata);
 
     default:
-      // Legacy tools or unknown tools
+      // Tools without a dedicated formatter (get_bookmarks, add_bookmark)
       return JSON.stringify(result, null, 2);
   }
 }
@@ -536,7 +536,6 @@ function formatContentExtractionResult(result, metadata) {
       2
     )}`;
   } else if (result.summary) {
-    // Enhanced summarized content response
     const summaryText = formatContentSummary(
       result.summary,
       result.content_type
@@ -608,7 +607,6 @@ function formatElementClickResult(result, metadata) {
 }
 
 function formatElementFillResult(result, metadata) {
-  // Enhanced formatting for anti-detection bypass methods
   const methodEmojis = {
     twitter_direct_bypass: "🐦 Twitter Direct Bypass",
     linkedin_direct_bypass: "💼 LinkedIn Direct Bypass",
@@ -728,9 +726,7 @@ function formatScrollResult(result, metadata) {
     summary += ` (${result.requested_pixels}px)`;
   }
 
-  // These read the field names scrollPage actually returns. They previously
-  // read scroll_position/wait_time, which it never emits, so the position and
-  // wait were silently dropped from every scroll result.
+  // Field names must match what scrollPage returns (new_position, wait_after).
   if (result.new_position) {
     summary += `\n📍 New position: x=${result.new_position.x}, y=${result.new_position.y}`;
   }
@@ -960,7 +956,7 @@ function formatPageStyleResult(result, metadata) {
   return `${summary}\n\n${JSON.stringify(metadata, null, 2)}`;
 }
 
-// Enhanced fallback tools when extension is not connected
+// Tool list served while the extension is not connected
 function getFallbackTools() {
   return [
     {

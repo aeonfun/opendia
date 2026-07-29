@@ -15,8 +15,7 @@ let currentPage = document.getElementById("currentPage");
 let serverUrl = document.getElementById("serverUrl");
 
 // Shown when the background script can't be reached. Kept as one list so the
-// name list and the count can't disagree — they previously said 17 and omitted
-// page_style, while the extension registered 18.
+// names and the count cannot disagree.
 const KNOWN_TOOLS = [
   "page_analyze", "page_extract_content", "element_click", "element_fill",
   "element_get_state", "page_navigate", "page_wait_for", "page_scroll",
