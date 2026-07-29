@@ -31,15 +31,6 @@ async function buildForBrowser(browser) {
     path.join(buildDir, 'src/polyfill/browser-polyfill.min.js')
   );
   
-  // Browser-specific post-processing
-  if (browser === 'chrome') {
-    console.log('📦 Chrome MV3: Service worker mode enabled');
-    // No additional processing needed for Chrome
-  } else if (browser === 'firefox') {
-    console.log('🦊 Firefox MV2: Background page mode enabled');
-    // No additional processing needed for Firefox
-  }
-  
   console.log(`✅ ${browser} extension built successfully in ${buildDir}`);
 }
 

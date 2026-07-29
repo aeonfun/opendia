@@ -248,6 +248,45 @@ let wss = null;
 let chromeExtensionSocket = null;
 let availableTools = [];
 
+// Open SSE response streams, so tools/list_changed can reach SSE clients too.
+const sseClients = new Set();
+// Notifications are only legal after the client has initialized, and only
+// useful then: a client initializing later lists tools itself.
+let clientInitialized = false;
+// What the last tools/list would have returned, so a reconnecting extension
+// re-registering the same tools doesn't emit a pointless notification.
+let lastToolSignature = "";
+
+function toolSignature(tools) {
+  return tools.map((t) => t.name).join(",");
+}
+
+// The extension connects independently of the MCP client, so the tool list can
+// change after startup. Without this the client keeps whatever the first
+// tools/list returned - typically the fallback schemas - for the whole session.
+function notifyToolsListChanged() {
+  const signature = availableTools.length > 0 ? toolSignature(availableTools) : "";
+  if (!clientInitialized || signature === lastToolSignature) {
+    return;
+  }
+  lastToolSignature = signature;
+
+  const notification = JSON.stringify({
+    jsonrpc: "2.0",
+    method: "notifications/tools/list_changed",
+  });
+
+  if (!sseOnly) {
+    process.stdout.write(notification + "\n");
+  }
+  for (const res of sseClients) {
+    res.write(`data: ${notification}\n\n`);
+  }
+  console.error(
+    `📢 Sent tools/list_changed (${availableTools.length} tools, ${sseClients.size} SSE client(s))`
+  );
+}
+
 // Tool call tracking
 const pendingCalls = new Map();
 // Monotonic counter so concurrent tool calls can never share a call id.
@@ -277,10 +316,13 @@ async function handleMCPRequest(request) {
         console.error(
           `MCP client initializing: ${params?.clientInfo?.name || "unknown"}`
         );
+        clientInitialized = true;
+        // The extension may register after this point, so declare that the tool
+        // list can change; without it a client has no reason to ever re-list.
         result = {
           protocolVersion: "2024-11-05",
           capabilities: {
-            tools: {},
+            tools: { listChanged: true },
           },
           serverInfo: {
             name: "browser-mcp-server",
@@ -323,6 +365,10 @@ async function handleMCPRequest(request) {
             tools: getFallbackTools(),
           };
         }
+        // Record what the client now believes, so notifyToolsListChanged only
+        // fires when the answer would actually differ.
+        lastToolSignature =
+          availableTools.length > 0 ? toolSignature(availableTools) : "";
         break;
 
       case "tools/call":
@@ -398,7 +444,7 @@ async function handleMCPRequest(request) {
   }
 }
 
-// Enhanced tool result formatting with anti-detection support
+// Tool result formatting
 function formatToolResult(toolName, result) {
   const metadata = {
     tool: toolName,
@@ -465,7 +511,7 @@ function formatToolResult(toolName, result) {
       return formatPageStyleResult(result, metadata);
 
     default:
-      // Legacy tools or unknown tools
+      // Tools without a dedicated formatter (get_bookmarks, add_bookmark)
       return JSON.stringify(result, null, 2);
   }
 }
@@ -480,9 +526,14 @@ function formatPageAnalyzeResult(result, metadata) {
       `Found ${result.elements.length} relevant elements using ${result.method}:${platformInfo}\n\n` +
       result.elements
         .map((el) => {
-          const readyStatus = el.ready ? "✅ Ready" : "⚠️ Not ready";
-          const stateInfo = el.state === "disabled" ? " (disabled)" : "";
-          return `• ${el.name} (${el.type}) - Confidence: ${el.conf}% ${readyStatus}${stateInfo}\n  Element ID: ${el.id}`;
+          // The discover phase emits type/ready/state at the top level; the
+          // detailed phase emits a fingerprint and nests state under meta.
+          const ready = el.ready ?? el.meta?.state?.interaction_ready;
+          const disabled = el.state === "disabled" || el.meta?.state?.disabled;
+          const type = el.type || el.fp || "element";
+          const readyStatus = ready ? "✅ Ready" : "⚠️ Not ready";
+          const stateInfo = disabled ? " (disabled)" : "";
+          return `• ${el.name} (${type}) - Confidence: ${el.conf}% ${readyStatus}${stateInfo}\n  Element ID: ${el.id}`;
         })
         .join("\n\n");
     return `${summary}\n\n${JSON.stringify(metadata, null, 2)}`;
@@ -500,7 +551,9 @@ function formatPageAnalyzeResult(result, metadata) {
 }
 
 function formatContentExtractionResult(result, metadata) {
-  const contentSummary = `Extracted ${result.content_type} content using ${result.method}:\n\n`;
+  // summarize:true (the default) reports extraction_method; summarize:false reports method.
+  const method = result.method || result.extraction_method;
+  const contentSummary = `Extracted ${result.content_type} content using ${method}:\n\n`;
   if (result.content) {
     // Check if this is full content extraction (summarize=false) or summary
     // If it's a content object with properties, show full content
@@ -529,7 +582,6 @@ function formatContentExtractionResult(result, metadata) {
       2
     )}`;
   } else if (result.summary) {
-    // Enhanced summarized content response
     const summaryText = formatContentSummary(
       result.summary,
       result.content_type
@@ -601,7 +653,6 @@ function formatElementClickResult(result, metadata) {
 }
 
 function formatElementFillResult(result, metadata) {
-  // Enhanced formatting for anti-detection bypass methods
   const methodEmojis = {
     twitter_direct_bypass: "🐦 Twitter Direct Bypass",
     linkedin_direct_bypass: "💼 LinkedIn Direct Bypass",
@@ -717,13 +768,11 @@ function formatScrollResult(result, metadata) {
   
   if (result.amount && result.amount !== "custom") {
     summary += ` (${result.amount})`;
-  } else if (result.pixels) {
-    summary += ` (${result.pixels}px)`;
+  } else if (result.requested_pixels) {
+    summary += ` (${result.requested_pixels}px)`;
   }
 
-  // These read the field names scrollPage actually returns. They previously
-  // read scroll_position/wait_time, which it never emits, so the position and
-  // wait were silently dropped from every scroll result.
+  // Field names must match what scrollPage returns (new_position, wait_after).
   if (result.new_position) {
     summary += `\n📍 New position: x=${result.new_position.x}, y=${result.new_position.y}`;
   }
@@ -905,7 +954,6 @@ ${JSON.stringify(metadata, null, 2)}`;
 }
 
 function formatPageStyleResult(result, metadata) {
-  const successIcon = result.success ? '✅' : '❌';
   const statusText = result.success ? 'successfully applied' : 'failed to apply';
   
   let summary = `🎨 Page styling ${statusText}\n\n`;
@@ -954,7 +1002,7 @@ function formatPageStyleResult(result, metadata) {
   return `${summary}\n\n${JSON.stringify(metadata, null, 2)}`;
 }
 
-// Enhanced fallback tools when extension is not connected
+// Tool list served while the extension is not connected
 function getFallbackTools() {
   return [
     {
@@ -1597,6 +1645,7 @@ function setupWebSocketHandlers() {
               .map((t) => t.name)
               .join(", ")}`
           );
+          notifyToolsListChanged();
         } else if (message.type === "ping") {
           // Respond to ping with pong
           ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
@@ -1619,6 +1668,7 @@ function setupWebSocketHandlers() {
         console.error("Browser Extension disconnected");
         chromeExtensionSocket = null;
         availableTools = []; // Clear tools when extension disconnects
+        notifyToolsListChanged();
         // Reject any in-flight tool calls immediately so the MCP client
         // sees a real error instead of hanging for up to 30s waiting on
         // a socket that's gone.
@@ -1667,6 +1717,9 @@ app.route('/sse')
       version: SERVER_VERSION
     })}\n\n`);
 
+    // Registered so server-initiated notifications reach this stream.
+    sseClients.add(res);
+
     // Heartbeat to keep connection alive
     const heartbeat = setInterval(() => {
       res.write(`data: ${JSON.stringify({
@@ -1677,6 +1730,7 @@ app.route('/sse')
 
     req.on('close', () => {
       clearInterval(heartbeat);
+      sseClients.delete(res);
       console.error('SSE client disconnected');
     });
 
@@ -1816,7 +1870,7 @@ async function startServer() {
   console.error(`✅ Ports resolved: WebSocket=${WS_PORT}, HTTP=${HTTP_PORT}`);
   
   // Start HTTP server
-  const httpServer = app.listen(HTTP_PORT, HTTP_HOST, () => {
+  app.listen(HTTP_PORT, HTTP_HOST, () => {
     console.error(`🌐 HTTP/SSE server running on ${HTTP_HOST}:${HTTP_PORT}`);
     console.error(`🔌 Browser Extension connects on ws://localhost:${WS_PORT}`);
     if (!isLoopbackHost(HTTP_HOST)) {

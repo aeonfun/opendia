@@ -33,7 +33,7 @@ browser.storage.local.get(['safetyMode'], (result) => {
 class ConnectionManager {
   constructor() {
     this.mcpSocket = null;
-    this.reconnectInterval = null;
+    this.reconnectTimer = null;
     this.reconnectAttempts = 0;
     this.heartbeatInterval = null;
     this.isServiceWorker = browserInfo.isServiceWorker;
@@ -69,22 +69,11 @@ class ConnectionManager {
     });
   }
 
+  // Reuse a live socket: reconnecting per operation replaced the socket the
+  // request arrived on, so the reply was written to a CONNECTING socket.
   async connect() {
-    if (this.isServiceWorker) {
-      // Reuse a live socket: reconnecting per operation replaced the socket the
-      // request arrived on, so the reply was written to a CONNECTING socket.
-      if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
-        console.log('🔧 Chrome MV3: Creating temporary connection');
-        await this.createConnection();
-      }
-    } else {
-      // Firefox MV2: Maintain persistent connection
-      if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
-        console.log('🦊 Firefox MV2: Creating persistent connection');
-        await this.createConnection();
-      } else {
-        console.log('🦊 Firefox MV2: Using existing connection');
-      }
+    if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
+      await this.createConnection();
     }
   }
 
@@ -93,49 +82,55 @@ class ConnectionManager {
       // Try port discovery if using default URL or if connection failed
       if (MCP_SERVER_URL === 'ws://localhost:5555' || this.reconnectAttempts > 2) {
         await this.discoverServerPorts();
-        // No reset here: discovery finding a port is not evidence the
-        // connection succeeded. Resetting made the counter oscillate 0->3->0,
-        // so backoff never grew and the give-up guard was unreachable. The
-        // real reset lives in onopen.
+        // Deliberately no reset: finding a port is not evidence the connection
+        // opened. The reset lives in onopen so backoff can actually grow.
       }
 
       console.log('🔗 Connecting to MCP server at', MCP_SERVER_URL);
-      this.mcpSocket = new WebSocket(MCP_SERVER_URL);
-      
-      this.mcpSocket.onopen = () => {
+      // Handlers are bound to this specific socket. The server closes the old
+      // socket when the extension reconnects, so a stale close event can arrive
+      // after a healthy one is live; without the identity check it would clear
+      // the new connection's heartbeat and arm a reconnect that never clears.
+      // Mirrors the `chromeExtensionSocket === ws` guard on the server side.
+      const socket = new WebSocket(MCP_SERVER_URL);
+      this.mcpSocket = socket;
+
+      socket.onopen = () => {
+        if (this.mcpSocket !== socket) return;
         console.log('✅ Connected to MCP server');
-        this.clearReconnectInterval();
+        this.clearReconnectTimer();
         this.reconnectAttempts = 0; // Reset attempts on successful connection
-        
+
         const tools = getAvailableTools();
         console.log(`🔧 Registering ${tools.length} tools:`, tools.map(t => t.name));
-        
-        // Register available browser functions
-        this.mcpSocket.send(JSON.stringify({
+
+        socket.send(JSON.stringify({
           type: 'register',
           tools: tools
         }));
-        
+
         // Setup heartbeat for persistent connections
         if (!this.isServiceWorker) {
           this.setupHeartbeat();
         }
       };
-      
-      this.mcpSocket.onmessage = async (event) => {
+
+      socket.onmessage = async (event) => {
+        if (this.mcpSocket !== socket) return;
         const message = JSON.parse(event.data);
         await handleMCPRequest(message);
       };
-      
-      this.mcpSocket.onclose = (event) => {
+
+      socket.onclose = (event) => {
+        if (this.mcpSocket !== socket) return;
         console.log(`❌ Disconnected from MCP server (code: ${event.code}, reason: ${event.reason})`);
         this.clearHeartbeat(); // Clear heartbeat on disconnect
         this.reconnectAttempts++;
-        
+
         // Check if this was a normal closure or abnormal
         if (event.code !== 1000 && event.code !== 1001) {
           console.log('🔄 Abnormal WebSocket closure, will attempt reconnection');
-          
+
           if (!this.isServiceWorker) {
             // Firefox: Attempt to reconnect
             this.scheduleReconnect();
@@ -145,13 +140,15 @@ class ConnectionManager {
           console.log('🔄 Normal WebSocket closure');
         }
       };
-      
-      this.mcpSocket.onerror = (error) => {
+
+      // No attempt counting here: onclose always follows onerror for a failed
+      // socket, so incrementing in both halved the effective retry budget.
+      socket.onerror = (error) => {
+        if (this.mcpSocket !== socket) return;
         console.log('⚠️ MCP WebSocket error:', error);
-        this.reconnectAttempts++;
       };
 
-      await this.waitForSocketOpen(this.mcpSocket);
+      await this.waitForSocketOpen(socket);
 
     } catch (error) {
       console.error('Connection failed:', error);
@@ -211,40 +208,36 @@ class ConnectionManager {
     }
   }
 
+  // One-shot, not an interval: a fixed period fires again while the previous
+  // attempt is still in port discovery (7 sequential un-timed fetches), which
+  // overwrites this.mcpSocket and orphans the pending socket. Failure re-arms
+  // via createConnection's catch and onclose, so nothing is lost.
   scheduleReconnect() {
-    this.clearReconnectInterval();
-    
+    this.clearReconnectTimer();
+
+    if (this.reconnectAttempts >= 10) {
+      console.log('❌ Maximum reconnection attempts reached');
+      return;
+    }
+
     // Exponential backoff for reconnection attempts
     const backoffTime = Math.min(5000 * Math.pow(2, this.reconnectAttempts), 30000);
     console.log(`🔄 Scheduling reconnection in ${backoffTime}ms (attempt ${this.reconnectAttempts})`);
-    
-    this.reconnectInterval = setInterval(() => {
-      if (this.reconnectAttempts < 10) {
-        this.connect().catch(() => {});
-      } else {
-        console.log('❌ Maximum reconnection attempts reached');
-        this.clearReconnectInterval();
-      }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.connect().catch(() => {});
     }, backoffTime);
   }
 
-  clearReconnectInterval() {
-    if (this.reconnectInterval) {
-      clearInterval(this.reconnectInterval);
-      this.reconnectInterval = null;
+  clearReconnectTimer() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
   }
 
   async ensureConnection() {
-    if (this.isServiceWorker) {
-      // Chrome: Always create fresh connection
-      await this.connect();
-    } else {
-      // Firefox: Use existing or create new
-      if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
-        await this.connect();
-      }
-    }
+    await this.connect();
     return this.mcpSocket;
   }
 
@@ -270,25 +263,30 @@ class ConnectionManager {
 const connectionManager = new ConnectionManager();
 
 // Content script management for background tabs
+// Ping the content script in a tab. Rejects on timeout or extension error.
+function pingContentScript(tabId, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Content script ping timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
+      clearTimeout(timer);
+      if (browser.runtime.lastError) {
+        reject(new Error(browser.runtime.lastError.message));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 async function ensureContentScriptReady(tabId, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Test if content script is responsive
-      const response = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Content script ping timeout'));
-        }, 2000);
-        
-        browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
-          clearTimeout(timeout);
-          if (browser.runtime.lastError) {
-            reject(new Error(browser.runtime.lastError.message));
-          } else {
-            resolve(response);
-          }
-        });
-      });
-      
+      const response = await pingContentScript(tabId, 2000);
+
       if (response && response.success) {
         console.log(`✅ Content script ready in tab ${tabId}`);
         return true;
@@ -339,18 +337,8 @@ async function ensureContentScriptReady(tabId, retries = 3) {
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Test again
-          const testResponse = await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout after injection')), 3000);
-            browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
-              clearTimeout(timeout);
-              if (browser.runtime.lastError) {
-                reject(new Error(browser.runtime.lastError.message));
-              } else {
-                resolve(response);
-              }
-            });
-          });
-          
+          const testResponse = await pingContentScript(tabId, 3000);
+
           if (testResponse && testResponse.success) {
             console.log(`✅ Content script successfully injected into tab ${tabId}`);
             return true;
@@ -402,14 +390,9 @@ async function getTabContentScriptStatus(tabId) {
       return { ready: false, reason: 'restricted_url', url: tab.url };
     }
     
-    const response = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => resolve(null), 3000); // Increase to 3 seconds
-      browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
-        clearTimeout(timeout);
-        resolve(response);
-      });
-    });
-    
+    // A failed ping is the answer here, not an error: report the tab as not loaded.
+    const response = await pingContentScript(tabId, 3000).catch(() => null);
+
     if (response && response.success) {
       return { ready: true, reason: 'active', url: tab.url };
     } else {
@@ -945,20 +928,23 @@ function getAvailableTools() {
       inputSchema: {
         type: "object",
         properties: {
-          link_type: {
-            type: "string",
-            enum: ["all", "internal", "external"],
-            default: "all",
-            description: "Filter by internal/external links"
+          include_internal: {
+            type: "boolean",
+            default: true,
+            description: "Include links pointing at the current domain"
           },
-          domains: {
-            type: "array",
-            items: { type: "string" },
-            description: "Filter by specific domains (optional)"
+          include_external: {
+            type: "boolean",
+            default: true,
+            description: "Include links pointing off the current domain"
+          },
+          domain_filter: {
+            type: "string",
+            description: "Only return links whose domain contains this string (optional)"
           },
           max_results: {
             type: "number",
-            default: 50,
+            default: 100,
             maximum: 200,
             description: "Maximum links to return"
           }
@@ -1137,30 +1123,34 @@ async function handleMCPRequest(message) {
   }
 }
 
-// Enhanced content script communication with background tab support
-async function sendToContentScript(action, data, targetTabId = null) {
-  let targetTab;
-  
-  if (targetTabId) {
-    // Use specific tab
+// Content script communication, targeting a specific tab or the active one
+// Resolve the tab a tool should act on: an explicit tab id, else the active tab.
+async function resolveTargetTab(tabId = null) {
+  if (tabId) {
     try {
-      targetTab = await browser.tabs.get(targetTabId);
+      return await browser.tabs.get(tabId);
     } catch (error) {
-      throw new Error(`Tab ${targetTabId} not found or inaccessible`);
+      // tabs.get also rejects for reasons other than "not found" (bad id type,
+      // incognito access denied), so keep the underlying message.
+      throw new Error(`Tab ${tabId} not found or inaccessible: ${error.message}`);
     }
-  } else {
-    // Fallback to active tab (maintains compatibility)
-    const [activeTab] = await browser.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    
-    if (!activeTab) {
-      throw new Error('No active tab found');
-    }
-    targetTab = activeTab;
   }
-  
+
+  // tabs.query legitimately returns [] when there is no focused normal window.
+  const [activeTab] = await browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+
+  if (!activeTab) {
+    throw new Error('No active tab found');
+  }
+  return activeTab;
+}
+
+async function sendToContentScript(action, data, targetTabId = null) {
+  const targetTab = await resolveTargetTab(targetTabId);
+
   // Ensure content script is available in the target tab
   await ensureContentScriptReady(targetTab.id);
   
@@ -1178,16 +1168,7 @@ async function sendToContentScript(action, data, targetTabId = null) {
 }
 
 async function navigateToUrl(url, waitFor, timeout = 10000) {
-  const [activeTab] = await browser.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
-
-  // tabs.query legitimately returns [] (no focused normal window), which used
-  // to crash here on activeTab.id. Other callers already guard this.
-  if (!activeTab) {
-    throw new Error("No active tab found");
-  }
+  const activeTab = await resolveTargetTab();
 
   await browser.tabs.update(activeTab.id, { url });
   
@@ -1231,7 +1212,7 @@ async function waitForElement(tabId, selector, timeout = 5000) {
   throw new Error(`Timeout waiting for element: ${selector}`);
 }
 
-// Enhanced Tab Management Functions with Batch Support
+// Tab management, single and batched
 async function createTab(params) {
   const { 
     url, 
@@ -1267,7 +1248,7 @@ async function createTab(params) {
     const urlArray = Array(count).fill(url);
     return await createTabsBatch(urlArray, active, wait_for, timeout, batch_settings);
   } else {
-    // Single tab creation (legacy behavior)
+    // Single tab creation
     console.log(`📱 Using single tab mode for: ${url || 'about:blank'}`);
     return await createSingleTab(url, active, wait_for, timeout);
   }
@@ -1309,15 +1290,17 @@ function validateTabCreateParams(params) {
     }
   }
   
-  // Validate count
-  if (count < 1 || count > 50) {
-    return { valid: false, error: "Count must be between 1 and 50" };
+  // Validate count. Both comparisons coerce, so a string or fractional count
+  // passed the range check and then broke Array(count): "5" yielded a single tab
+  // reported as a full success, 2.5 threw an opaque "Invalid array length".
+  if (!Number.isInteger(count) || count < 1 || count > 50) {
+    return { valid: false, error: "Count must be an integer between 1 and 50" };
   }
   
   return { valid: true };
 }
 
-// Single tab creation (original behavior)
+// Single tab creation
 async function createSingleTab(url, active, wait_for, timeout) {
   const createProperties = { active };
   if (url) {
@@ -1393,11 +1376,18 @@ async function createTabsBatch(urls, active, wait_for, timeout, batch_settings =
   console.log('🔍 createTabsBatch called with:', { urls: urls.length, batch_settings });
   
   const {
-    chunk_size = 5,
+    chunk_size: requested_chunk_size = 5,
     delay_between_chunks = 1000,
     delay_between_tabs = 200
   } = batch_settings || {};
-  
+
+  // A destructuring default only covers undefined, so an explicit 0 or a negative
+  // survived and the chunk loop never advanced - an unbounded spin in the worker
+  // while the server call timed out at 30s.
+  const chunk_size = Number.isInteger(requested_chunk_size) && requested_chunk_size > 0
+    ? requested_chunk_size
+    : 5;
+
   const startTime = Date.now();
   const totalTabs = urls.length;
   const createdTabs = [];
@@ -1497,6 +1487,7 @@ async function createTabsBatch(urls, active, wait_for, timeout, batch_settings =
       total_requested: totalTabs,
       successful: successCount,
       failed: errorCount,
+      chunks_processed: Math.ceil(totalTabs / chunk_size),
       execution_time_ms: executionTime
     },
     // Only include full tab details for small batches
@@ -1852,27 +1843,7 @@ async function getSelectedText(params) {
   } = params;
 
   try {
-    let targetTab;
-    
-    if (tab_id) {
-      // Use specific tab
-      try {
-        targetTab = await browser.tabs.get(tab_id);
-      } catch (error) {
-        throw new Error(`Tab ${tab_id} not found or inaccessible`);
-      }
-    } else {
-      // Get the active tab
-      const [activeTab] = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-
-      if (!activeTab) {
-        throw new Error("No active tab found");
-      }
-      targetTab = activeTab;
-    }
+    const targetTab = await resolveTargetTab(tab_id);
 
     // Execute script to get selected text - handle browser differences
     let results;
@@ -1944,8 +1915,8 @@ async function getSelectedText(params) {
     return response;
 
   } catch (error) {
-    // These used to return has_selection: false, which formatSelectedTextResult
-    // renders as "No text selected" — a failure was reported as an empty page.
+    // Throw rather than returning has_selection:false, which the formatter
+    // renders as "No text selected" - a failure indistinguishable from success.
     throw new Error(`Failed to get selected text: ${error.message}`);
   }
 }
@@ -2027,8 +1998,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       tools: tools.map(t => t.name)
     });
   } else if (request.action === "reconnect") {
-    // Report the real outcome: this used to answer success before the socket
-    // had opened, so the popup's reconnect button always looked like it worked.
+    // Answer after the socket opens, not before, so the popup reports the
+    // real outcome rather than always looking successful.
     connectionManager.connect()
       .then(() => sendResponse({ success: true }))
       .catch((error) => sendResponse({ success: false, error: error.message }));

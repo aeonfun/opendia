@@ -1,4 +1,5 @@
-// Enhanced Browser Automation Content Script with Anti-Detection
+// Browser automation content script. Fills React-controlled editors via
+// execCommand, which they accept where programmatic value writes are ignored.
 // Import WebExtension polyfill for cross-browser compatibility
 if (typeof browser === 'undefined' && typeof chrome !== 'undefined') {
   globalThis.browser = chrome;
@@ -219,7 +220,7 @@ class BrowserAutomation {
 
   async executeDirectBypass(element, value, platformConfig, element_id) {
     try {
-      console.log(`🐦 Executing ${platformConfig.bypassMethod} bypass`);
+      console.log(`🔓 Executing ${platformConfig.bypassMethod} bypass`);
 
       switch (platformConfig.bypassMethod) {
         case "twitter_direct":
@@ -247,23 +248,20 @@ class BrowserAutomation {
   }
 
   async twitterDirectBypass(element, value, element_id) {
-    // THE WORKING FORMULA FOR TWITTER:
-    // 1. Focus 2. Click 3. execCommand
-    console.log("🐦 Twitter direct bypass - focus+click+execCommand");
-
-    // Ensure element is in view
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     await new Promise((r) => setTimeout(r, 200));
 
-    // The magic sequence that bypasses Twitter detection
+    // Draft.js ignores programmatic .value writes and synthesized input events.
+    // execCommand("insertText") produces a trusted beforeinput, which the editor's
+    // own handler accepts and mirrors into React state. Focus and click first:
+    // the handler is only attached once the editor considers itself active.
     element.focus();
     element.click();
     const execResult = document.execCommand("insertText", false, value);
 
-    // Wait for React state to update
+    // The editor commits on its next render; reading sooner sees the old value.
     await new Promise((r) => setTimeout(r, 500));
 
-    // Verify success
     const currentText = element.textContent || element.value || "";
     const success = currentText.includes(value);
 
@@ -279,16 +277,13 @@ class BrowserAutomation {
   }
 
   async linkedinDirectBypass(element, value, element_id) {
-    console.log("💼 LinkedIn direct bypass");
-
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     await new Promise((r) => setTimeout(r, 200));
 
-    // LinkedIn-specific sequence
     element.focus();
     element.click();
 
-    // Clear existing content first for LinkedIn
+    // LinkedIn's editor appends rather than replaces, so clear before inserting.
     if (element.textContent) {
       document.execCommand("selectAll");
       document.execCommand("delete");
@@ -296,7 +291,7 @@ class BrowserAutomation {
 
     const execResult = document.execCommand("insertText", false, value);
 
-    // LinkedIn needs more time for state updates
+    // Slower to commit than Twitter's; 500ms reads back a partial value.
     await new Promise((r) => setTimeout(r, 800));
 
     const currentText = element.textContent || element.value || "";
@@ -314,16 +309,12 @@ class BrowserAutomation {
   }
 
   async facebookDirectBypass(element, value, element_id) {
-    console.log("📘 Facebook direct bypass");
-
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     await new Promise((r) => setTimeout(r, 200));
 
-    // Facebook-specific sequence
     element.focus();
     element.click();
 
-    // Facebook may need selection clearing
     if (element.textContent) {
       document.execCommand("selectAll");
       document.execCommand("delete");
@@ -331,7 +322,8 @@ class BrowserAutomation {
 
     const execResult = document.execCommand("insertText", false, value);
 
-    // Trigger Facebook-specific events
+    // Facebook's composer also listens for these directly, unlike Twitter's,
+    // which picks the change up from beforeinput alone.
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
 
@@ -351,13 +343,12 @@ class BrowserAutomation {
     };
   }
 
+  // Reached only if a platform config names a bypassMethod without its own case.
+  // Kept as the extension point for adding a platform to ANTI_DETECTION_PLATFORMS.
   async genericDirectBypass(element, value, element_id) {
-    console.log("🔧 Generic direct bypass");
-
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     await new Promise((r) => setTimeout(r, 200));
 
-    // Generic direct sequence
     element.focus();
     element.click();
     const execResult = document.execCommand("insertText", false, value);
@@ -390,7 +381,7 @@ class BrowserAutomation {
       throw new Error(`Element not found: ${element_id}`);
     }
 
-    // Enhanced focus sequence for modern web apps
+    // Modern editors attach their input handler on focus, not on load.
     if (force_focus) {
       await this.ensureProperFocus(element);
     } else {
@@ -567,7 +558,6 @@ class BrowserAutomation {
     max_results = 10,
   }) {
     const startTime = performance.now();
-    const pageType = this.detectPageType();
 
     // Use default max results limit  
     max_results = Math.min(max_results, 7); // Allow slightly more for detailed analysis
@@ -620,7 +610,6 @@ class BrowserAutomation {
   }
 
   async extractContent({ content_type, max_items = 20, summarize = true }) {
-    console.log(`🔍 extractContent called with: content_type=${content_type}, max_items=${max_items}, summarize=${summarize}`);
     const startTime = performance.now();
     const extractors = {
       article: () => this.extractArticleContent(summarize),
@@ -650,8 +639,7 @@ class BrowserAutomation {
         extracted_at: new Date().toISOString(),
       };
     } else {
-      // Legacy full content extraction
-      console.log(`🎯 Returning FULL content: ${rawContent?.content?.length || 0} characters`);
+      // Full content, returned when summarize is false
       return {
         content: rawContent,
         method: "semantic_extraction",
@@ -663,7 +651,6 @@ class BrowserAutomation {
   }
 
   extractArticleContent(summarize = true) {
-    console.log(`📄 extractArticleContent called with summarize=${summarize}`);
     const article = document.querySelector(
       'article, [role="article"], .article-content, main'
     );
@@ -672,8 +659,6 @@ class BrowserAutomation {
       ?.textContent?.trim();
     const content = article?.textContent?.trim() || this.extractMainContent();
 
-    console.log(`📏 Extracted content length: ${content?.length || 0} characters`);
-    console.log(`📝 Content preview: ${content?.substring(0, 200)}...`);
 
     return {
       title,
@@ -1000,7 +985,7 @@ class BrowserAutomation {
   }
 
   calculateQualityScore(results) {
-    // An extractor that matched nothing returns [], which used to make every
+    // An extractor that matched nothing returns [], which would make every
     // term NaN and ship "NaN%" to the model.
     if (results.length === 0) return 0;
 
@@ -1295,6 +1280,7 @@ class BrowserAutomation {
       if (checkCondition()) {
         return {
           condition_met: true,
+          condition_type: condition_type,
           wait_time: Date.now() - startTime,
         };
       }
@@ -1626,7 +1612,6 @@ class BrowserAutomation {
   }
 
   async fullEnhancedAnalysis(intent_hint, max_results) {
-    // Enhanced version of semantic analysis with better filtering
     const relevantElements = document.querySelectorAll(`
       button, input, select, textarea, a[href],
       [role="button"], [role="textbox"], [role="searchbox"],
@@ -2050,12 +2035,10 @@ class BrowserAutomation {
     };
     
     const style = moodMap[mood.toLowerCase()] || moodMap['cozy coffee shop'];
-    return this.buildMoodCSS(style, intensity);
+    return this.buildMoodCSS(style);
   }
 
-  buildMoodCSS(style, intensity) {
-    const opacity = intensity === 'subtle' ? '0.3' : intensity === 'medium' ? '0.6' : '0.9';
-    
+  buildMoodCSS(style) {
     let css = `
       body {
         background: ${style.background} !important;
