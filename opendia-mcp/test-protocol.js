@@ -4,57 +4,17 @@
 // connects independently of the MCP client: a client that lists tools before
 // the extension is up gets fallback schemas, and without this notification it
 // would keep them for the whole session.
-const { spawn } = require('child_process');
 const http = require('http');
-const path = require('path');
 const WebSocket = require('ws');
+const { sleep, makeAsserter, startServer } = require('./test-helpers');
 
-const SERVER = path.join(__dirname, 'server.js');
 const WS_PORT = 45551;
 const HTTP_PORT = 45552;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-let failures = 0;
-function assert(label, cond, detail = '') {
-  console.log(`${cond ? '  ok  ' : ' FAIL '} ${label}${detail ? ' -> ' + detail : ''}`);
-  if (!cond) failures++;
-}
-
-// The server shifts to another port when one is busy, which would silently
-// point the rest of the test at nothing. Confirm it took the ports we asked for.
-function waitForServer(timeoutMs = 10000) {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve, reject) => {
-    const attempt = () => {
-      const req = http.get(
-        { host: '127.0.0.1', port: HTTP_PORT, path: '/ports', timeout: 1000 },
-        (res) => {
-          let body = '';
-          res.on('data', (c) => (body += c));
-          res.on('end', () => {
-            try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
-          });
-        }
-      );
-      req.on('error', () => {
-        if (Date.now() > deadline) {
-          reject(new Error(`server never came up on ${HTTP_PORT} (port busy?)`));
-        } else {
-          setTimeout(attempt, 250);
-        }
-      });
-      req.on('timeout', () => req.destroy());
-    };
-    attempt();
-  });
-}
+const { assert, state } = makeAsserter();
 
 async function run() {
-  const srv = spawn('node', [SERVER, `--ws-port=${WS_PORT}`, `--http-port=${HTTP_PORT}`], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
-  srv.stderr.on('data', () => {});
+  const { proc: srv, httpPort, wsPort } = await startServer({ wsPort: WS_PORT, httpPort: HTTP_PORT });
 
   const frames = [];
   let buf = '';
@@ -73,9 +33,7 @@ async function run() {
   const resultFor = (id) => frames.find((f) => f.id === id)?.result;
 
   try {
-    const ports = await waitForServer();
-    assert('server listening on requested ports', ports.websocket === WS_PORT,
-      `ws=${ports.websocket}`);
+    assert('server listening', wsPort > 0 && httpPort > 0, `ws=${wsPort} http=${httpPort}`);
 
     // --- initialize ---
     send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { clientInfo: { name: 'test' } } });
@@ -94,7 +52,7 @@ async function run() {
     const sseFrames = [];
     await new Promise((resolve, reject) => {
       const req = http.get(
-        { host: '127.0.0.1', port: HTTP_PORT, path: '/sse', headers: { Accept: 'text/event-stream' } },
+        { host: '127.0.0.1', port: httpPort, path: '/sse', headers: { Accept: 'text/event-stream' } },
         (res) => {
           assert('SSE stream opened', res.statusCode === 200, `HTTP ${res.statusCode}`);
           res.on('data', (c) => {
@@ -112,7 +70,7 @@ async function run() {
     await sleep(300);
 
     // --- a fake extension registers its tools ---
-    const ws = new WebSocket(`ws://127.0.0.1:${WS_PORT}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${wsPort}`);
     await new Promise((res, rej) => { ws.on('open', res); ws.on('error', rej); });
     const tools = [
       { name: 'page_analyze', description: 'x', inputSchema: { type: 'object', properties: { tab_id: { type: 'number' } } } },
@@ -156,8 +114,8 @@ async function run() {
 
 run()
   .then(() => {
-    console.log(failures === 0 ? '\n✅ Protocol tests passed' : `\n❌ ${failures} failure(s)`);
-    process.exit(failures === 0 ? 0 : 1);
+    console.log(state.failures === 0 ? '\n✅ Protocol tests passed' : `\n❌ ${state.failures} failure(s)`);
+    process.exit(state.failures === 0 ? 0 : 1);
   })
   .catch((e) => {
     console.error('❌ Harness error:', e.message);

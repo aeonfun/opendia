@@ -7,55 +7,20 @@
 // manifest with applications.gecko -> isFirefox true). That is the path which
 // installs a heartbeat and schedules reconnects, so it is where a stale socket
 // event does the most damage.
-const { spawn } = require('child_process');
 const fs = require('fs');
-const http = require('http');
 const path = require('path');
 const vm = require('vm');
 const WebSocket = require('ws');
+const { sleep, makeAsserter, startServer } = require('./test-helpers');
 
-const SERVER = path.join(__dirname, 'server.js');
 const BACKGROUND = path.join(__dirname, '..', 'opendia-extension', 'src', 'background', 'background.js');
 const WS_PORT = 45553;
 const HTTP_PORT = 45554;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-let failures = 0;
-function assert(label, cond, detail = '') {
-  console.log(`${cond ? '  ok  ' : ' FAIL '} ${label}${detail ? ' -> ' + detail : ''}`);
-  if (!cond) failures++;
-}
-
-function waitForServer(timeoutMs = 10000) {
-  const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve, reject) => {
-    const attempt = () => {
-      const req = http.get(
-        { host: '127.0.0.1', port: HTTP_PORT, path: '/ports', timeout: 1000 },
-        (res) => {
-          let body = '';
-          res.on('data', (c) => (body += c));
-          res.on('end', () => {
-            try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
-          });
-        }
-      );
-      req.on('error', () => {
-        if (Date.now() > deadline) {
-          reject(new Error(`server never came up on ${HTTP_PORT} (port busy?)`));
-        } else {
-          setTimeout(attempt, 250);
-        }
-      });
-      req.on('timeout', () => req.destroy());
-    };
-    attempt();
-  });
-}
+const { assert, state } = makeAsserter();
 
 // Loads the real background.js under stubbed extension globals.
-function loadBackground() {
+function loadBackground(wsPort, httpPort) {
   const manifest = { manifest_version: 2, applications: { gecko: { id: 'opendia@test' } } };
   const sandbox = {
     console: { log: () => {}, error: () => {}, warn: () => {} },
@@ -69,10 +34,10 @@ function loadBackground() {
       return {
         ok: true,
         json: async () => ({
-          websocket: WS_PORT,
-          http: HTTP_PORT,
-          websocketUrl: `ws://127.0.0.1:${WS_PORT}`,
-          httpUrl: `http://127.0.0.1:${HTTP_PORT}`,
+          websocket: wsPort,
+          http: httpPort,
+          websocketUrl: `ws://127.0.0.1:${wsPort}`,
+          httpUrl: `http://127.0.0.1:${httpPort}`,
         }),
       };
     },
@@ -93,17 +58,13 @@ function loadBackground() {
 }
 
 async function run() {
-  const srv = spawn('node', [SERVER, `--ws-port=${WS_PORT}`, `--http-port=${HTTP_PORT}`], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+  const { proc: srv, wsPort, httpPort } = await startServer({ wsPort: WS_PORT, httpPort: HTTP_PORT });
   srv.stdout.on('data', () => {});
-  srv.stderr.on('data', () => {});
 
   try {
-    const ports = await waitForServer();
-    assert('server listening on requested ports', ports.websocket === WS_PORT, `ws=${ports.websocket}`);
+    assert('server listening', wsPort > 0 && httpPort > 0, `ws=${wsPort} http=${httpPort}`);
 
-    const cm = loadBackground();
+    const cm = loadBackground(wsPort, httpPort);
     assert('background.js loaded, ConnectionManager present', !!cm);
     assert('simulating Firefox MV2 (heartbeat path)',
       cm.isServiceWorker === false && !!cm.isFirefox);
@@ -164,8 +125,8 @@ async function run() {
 
 run()
   .then(() => {
-    console.log(failures === 0 ? '\n✅ Connection tests passed' : `\n❌ ${failures} failure(s)`);
-    process.exit(failures === 0 ? 0 : 1);
+    console.log(state.failures === 0 ? '\n✅ Connection tests passed' : `\n❌ ${state.failures} failure(s)`);
+    process.exit(state.failures === 0 ? 0 : 1);
   })
   .catch((e) => {
     console.error('❌ Harness error:', e.message);
