@@ -905,7 +905,6 @@ ${JSON.stringify(metadata, null, 2)}`;
 }
 
 function formatPageStyleResult(result, metadata) {
-  const successIcon = result.success ? '✅' : '❌';
   const statusText = result.success ? 'successfully applied' : 'failed to apply';
   
   let summary = `🎨 Page styling ${statusText}\n\n`;
@@ -1816,7 +1815,7 @@ async function startServer() {
   console.error(`✅ Ports resolved: WebSocket=${WS_PORT}, HTTP=${HTTP_PORT}`);
   
   // Start HTTP server
-  const httpServer = app.listen(HTTP_PORT, HTTP_HOST, () => {
+  app.listen(HTTP_PORT, HTTP_HOST, () => {
     console.error(`🌐 HTTP/SSE server running on ${HTTP_HOST}:${HTTP_PORT}`);
     console.error(`🔌 Browser Extension connects on ws://localhost:${WS_PORT}`);
     if (!isLoopbackHost(HTTP_HOST)) {

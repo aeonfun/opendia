@@ -95,6 +95,9 @@ out
 .nuxt
 dist
 
+# Packaged extension builds (published via GitHub Releases)
+opendia-extension/releases/
+
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js

@@ -74,9 +74,17 @@ cd dist/opendia-dxt
 npm install --production --silent
 cd ../..
 
-# Copy browser extension
+# Build and copy browser extension. The install instructions below point at
+# extension/dist/{chrome,firefox}, so those have to exist in the bundle.
+echo "🌐 Building browser extension..."
+cd opendia-extension
+npm install --silent
+npm run build --silent
+cd ..
+
 echo "🌐 Copying browser extension..."
 cp -r opendia-extension dist/opendia-dxt/extension
+rm -rf dist/opendia-dxt/extension/node_modules
 
 # Copy logo/icon files for DXT - try multiple sources
 echo "🎨 Copying logo files..."
@@ -290,7 +298,7 @@ Download the latest extension from: https://github.com/aeonfun/opendia/releases
 
 2. **Install Extension**
    - Click "Load unpacked"
-   - Select the `extension/` folder from this DXT package
+   - Select the `extension/dist/chrome/` folder from this DXT package
    - Extension should appear in your extensions list with OpenDia icon
 
 #### For Firefox
@@ -298,7 +306,7 @@ Download the latest extension from: https://github.com/aeonfun/opendia/releases
 1. **Load Temporary Add-on**
    - Go to `about:debugging#/runtime/this-firefox`
    - Click "Load Temporary Add-on..."
-   - Select the `manifest-firefox.json` file from the `extension/` folder
+   - Select the `manifest.json` file from the `extension/dist/firefox/` folder
 
 > **Firefox Note**: Extensions are loaded as temporary add-ons and will be removed when Firefox restarts. For permanent installation, use the signed extension from GitHub releases.
 

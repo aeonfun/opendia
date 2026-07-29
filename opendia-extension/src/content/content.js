@@ -567,7 +567,6 @@ class BrowserAutomation {
     max_results = 10,
   }) {
     const startTime = performance.now();
-    const pageType = this.detectPageType();
 
     // Use default max results limit  
     max_results = Math.min(max_results, 7); // Allow slightly more for detailed analysis
@@ -2050,12 +2049,10 @@ class BrowserAutomation {
     };
     
     const style = moodMap[mood.toLowerCase()] || moodMap['cozy coffee shop'];
-    return this.buildMoodCSS(style, intensity);
+    return this.buildMoodCSS(style);
   }
 
-  buildMoodCSS(style, intensity) {
-    const opacity = intensity === 'subtle' ? '0.3' : intensity === 'medium' ? '0.6' : '0.9';
-    
+  buildMoodCSS(style) {
     let css = `
       body {
         background: ${style.background} !important;
