@@ -930,20 +930,23 @@ function getAvailableTools() {
       inputSchema: {
         type: "object",
         properties: {
-          link_type: {
-            type: "string",
-            enum: ["all", "internal", "external"],
-            default: "all",
-            description: "Filter by internal/external links"
+          include_internal: {
+            type: "boolean",
+            default: true,
+            description: "Include links pointing at the current domain"
           },
-          domains: {
-            type: "array",
-            items: { type: "string" },
-            description: "Filter by specific domains (optional)"
+          include_external: {
+            type: "boolean",
+            default: true,
+            description: "Include links pointing off the current domain"
+          },
+          domain_filter: {
+            type: "string",
+            description: "Only return links whose domain contains this string (optional)"
           },
           max_results: {
             type: "number",
-            default: 50,
+            default: 100,
             maximum: 200,
             description: "Maximum links to return"
           }
@@ -1289,9 +1292,11 @@ function validateTabCreateParams(params) {
     }
   }
   
-  // Validate count
-  if (count < 1 || count > 50) {
-    return { valid: false, error: "Count must be between 1 and 50" };
+  // Validate count. Both comparisons coerce, so a string or fractional count
+  // passed the range check and then broke Array(count): "5" yielded a single tab
+  // reported as a full success, 2.5 threw an opaque "Invalid array length".
+  if (!Number.isInteger(count) || count < 1 || count > 50) {
+    return { valid: false, error: "Count must be an integer between 1 and 50" };
   }
   
   return { valid: true };
@@ -1373,11 +1378,18 @@ async function createTabsBatch(urls, active, wait_for, timeout, batch_settings =
   console.log('🔍 createTabsBatch called with:', { urls: urls.length, batch_settings });
   
   const {
-    chunk_size = 5,
+    chunk_size: requested_chunk_size = 5,
     delay_between_chunks = 1000,
     delay_between_tabs = 200
   } = batch_settings || {};
-  
+
+  // A destructuring default only covers undefined, so an explicit 0 or a negative
+  // survived and the chunk loop never advanced - an unbounded spin in the worker
+  // while the server call timed out at 30s.
+  const chunk_size = Number.isInteger(requested_chunk_size) && requested_chunk_size > 0
+    ? requested_chunk_size
+    : 5;
+
   const startTime = Date.now();
   const totalTabs = urls.length;
   const createdTabs = [];
@@ -1477,6 +1489,7 @@ async function createTabsBatch(urls, active, wait_for, timeout, batch_settings =
       total_requested: totalTabs,
       successful: successCount,
       failed: errorCount,
+      chunks_processed: Math.ceil(totalTabs / chunk_size),
       execution_time_ms: executionTime
     },
     // Only include full tab details for small batches

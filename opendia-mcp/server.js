@@ -480,9 +480,14 @@ function formatPageAnalyzeResult(result, metadata) {
       `Found ${result.elements.length} relevant elements using ${result.method}:${platformInfo}\n\n` +
       result.elements
         .map((el) => {
-          const readyStatus = el.ready ? "✅ Ready" : "⚠️ Not ready";
-          const stateInfo = el.state === "disabled" ? " (disabled)" : "";
-          return `• ${el.name} (${el.type}) - Confidence: ${el.conf}% ${readyStatus}${stateInfo}\n  Element ID: ${el.id}`;
+          // The discover phase emits type/ready/state at the top level; the
+          // detailed phase emits a fingerprint and nests state under meta.
+          const ready = el.ready ?? el.meta?.state?.interaction_ready;
+          const disabled = el.state === "disabled" || el.meta?.state?.disabled;
+          const type = el.type || el.fp || "element";
+          const readyStatus = ready ? "✅ Ready" : "⚠️ Not ready";
+          const stateInfo = disabled ? " (disabled)" : "";
+          return `• ${el.name} (${type}) - Confidence: ${el.conf}% ${readyStatus}${stateInfo}\n  Element ID: ${el.id}`;
         })
         .join("\n\n");
     return `${summary}\n\n${JSON.stringify(metadata, null, 2)}`;
@@ -500,7 +505,9 @@ function formatPageAnalyzeResult(result, metadata) {
 }
 
 function formatContentExtractionResult(result, metadata) {
-  const contentSummary = `Extracted ${result.content_type} content using ${result.method}:\n\n`;
+  // summarize:true (the default) reports extraction_method; summarize:false reports method.
+  const method = result.method || result.extraction_method;
+  const contentSummary = `Extracted ${result.content_type} content using ${method}:\n\n`;
   if (result.content) {
     // Check if this is full content extraction (summarize=false) or summary
     // If it's a content object with properties, show full content
@@ -717,8 +724,8 @@ function formatScrollResult(result, metadata) {
   
   if (result.amount && result.amount !== "custom") {
     summary += ` (${result.amount})`;
-  } else if (result.pixels) {
-    summary += ` (${result.pixels}px)`;
+  } else if (result.requested_pixels) {
+    summary += ` (${result.requested_pixels}px)`;
   }
 
   // These read the field names scrollPage actually returns. They previously

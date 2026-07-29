@@ -1294,6 +1294,7 @@ class BrowserAutomation {
       if (checkCondition()) {
         return {
           condition_met: true,
+          condition_type: condition_type,
           wait_time: Date.now() - startTime,
         };
       }
