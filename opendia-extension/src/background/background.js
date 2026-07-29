@@ -33,7 +33,7 @@ browser.storage.local.get(['safetyMode'], (result) => {
 class ConnectionManager {
   constructor() {
     this.mcpSocket = null;
-    this.reconnectInterval = null;
+    this.reconnectTimer = null;
     this.reconnectAttempts = 0;
     this.heartbeatInterval = null;
     this.isServiceWorker = browserInfo.isServiceWorker;
@@ -89,42 +89,50 @@ class ConnectionManager {
       }
 
       console.log('🔗 Connecting to MCP server at', MCP_SERVER_URL);
-      this.mcpSocket = new WebSocket(MCP_SERVER_URL);
-      
-      this.mcpSocket.onopen = () => {
+      // Handlers are bound to this specific socket. The server closes the old
+      // socket when the extension reconnects, so a stale close event can arrive
+      // after a healthy one is live; without the identity check it would clear
+      // the new connection's heartbeat and arm a reconnect that never clears.
+      // Mirrors the `chromeExtensionSocket === ws` guard on the server side.
+      const socket = new WebSocket(MCP_SERVER_URL);
+      this.mcpSocket = socket;
+
+      socket.onopen = () => {
+        if (this.mcpSocket !== socket) return;
         console.log('✅ Connected to MCP server');
-        this.clearReconnectInterval();
+        this.clearReconnectTimer();
         this.reconnectAttempts = 0; // Reset attempts on successful connection
-        
+
         const tools = getAvailableTools();
         console.log(`🔧 Registering ${tools.length} tools:`, tools.map(t => t.name));
-        
-        // Register available browser functions
-        this.mcpSocket.send(JSON.stringify({
+
+        socket.send(JSON.stringify({
           type: 'register',
           tools: tools
         }));
-        
+
         // Setup heartbeat for persistent connections
         if (!this.isServiceWorker) {
           this.setupHeartbeat();
         }
       };
-      
-      this.mcpSocket.onmessage = async (event) => {
+
+      socket.onmessage = async (event) => {
+        if (this.mcpSocket !== socket) return;
         const message = JSON.parse(event.data);
         await handleMCPRequest(message);
       };
-      
-      this.mcpSocket.onclose = (event) => {
+
+      socket.onclose = (event) => {
+        if (this.mcpSocket !== socket) return;
         console.log(`❌ Disconnected from MCP server (code: ${event.code}, reason: ${event.reason})`);
         this.clearHeartbeat(); // Clear heartbeat on disconnect
         this.reconnectAttempts++;
-        
+
         // Check if this was a normal closure or abnormal
         if (event.code !== 1000 && event.code !== 1001) {
           console.log('🔄 Abnormal WebSocket closure, will attempt reconnection');
-          
+
           if (!this.isServiceWorker) {
             // Firefox: Attempt to reconnect
             this.scheduleReconnect();
@@ -134,13 +142,15 @@ class ConnectionManager {
           console.log('🔄 Normal WebSocket closure');
         }
       };
-      
-      this.mcpSocket.onerror = (error) => {
+
+      // No attempt counting here: onclose always follows onerror for a failed
+      // socket, so incrementing in both halved the effective retry budget.
+      socket.onerror = (error) => {
+        if (this.mcpSocket !== socket) return;
         console.log('⚠️ MCP WebSocket error:', error);
-        this.reconnectAttempts++;
       };
 
-      await this.waitForSocketOpen(this.mcpSocket);
+      await this.waitForSocketOpen(socket);
 
     } catch (error) {
       console.error('Connection failed:', error);
@@ -200,27 +210,31 @@ class ConnectionManager {
     }
   }
 
+  // One-shot, not an interval: a fixed period fires again while the previous
+  // attempt is still in port discovery (7 sequential un-timed fetches), which
+  // overwrites this.mcpSocket and orphans the pending socket. Failure re-arms
+  // via createConnection's catch and onclose, so nothing is lost.
   scheduleReconnect() {
-    this.clearReconnectInterval();
-    
+    this.clearReconnectTimer();
+
+    if (this.reconnectAttempts >= 10) {
+      console.log('❌ Maximum reconnection attempts reached');
+      return;
+    }
+
     // Exponential backoff for reconnection attempts
     const backoffTime = Math.min(5000 * Math.pow(2, this.reconnectAttempts), 30000);
     console.log(`🔄 Scheduling reconnection in ${backoffTime}ms (attempt ${this.reconnectAttempts})`);
-    
-    this.reconnectInterval = setInterval(() => {
-      if (this.reconnectAttempts < 10) {
-        this.connect().catch(() => {});
-      } else {
-        console.log('❌ Maximum reconnection attempts reached');
-        this.clearReconnectInterval();
-      }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.connect().catch(() => {});
     }, backoffTime);
   }
 
-  clearReconnectInterval() {
-    if (this.reconnectInterval) {
-      clearInterval(this.reconnectInterval);
-      this.reconnectInterval = null;
+  clearReconnectTimer() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
   }
 
