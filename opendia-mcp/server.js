@@ -248,6 +248,45 @@ let wss = null;
 let chromeExtensionSocket = null;
 let availableTools = [];
 
+// Open SSE response streams, so tools/list_changed can reach SSE clients too.
+const sseClients = new Set();
+// Notifications are only legal after the client has initialized, and only
+// useful then: a client initializing later lists tools itself.
+let clientInitialized = false;
+// What the last tools/list would have returned, so a reconnecting extension
+// re-registering the same tools doesn't emit a pointless notification.
+let lastToolSignature = "";
+
+function toolSignature(tools) {
+  return tools.map((t) => t.name).join(",");
+}
+
+// The extension connects independently of the MCP client, so the tool list can
+// change after startup. Without this the client keeps whatever the first
+// tools/list returned - typically the fallback schemas - for the whole session.
+function notifyToolsListChanged() {
+  const signature = availableTools.length > 0 ? toolSignature(availableTools) : "";
+  if (!clientInitialized || signature === lastToolSignature) {
+    return;
+  }
+  lastToolSignature = signature;
+
+  const notification = JSON.stringify({
+    jsonrpc: "2.0",
+    method: "notifications/tools/list_changed",
+  });
+
+  if (!sseOnly) {
+    process.stdout.write(notification + "\n");
+  }
+  for (const res of sseClients) {
+    res.write(`data: ${notification}\n\n`);
+  }
+  console.error(
+    `📢 Sent tools/list_changed (${availableTools.length} tools, ${sseClients.size} SSE client(s))`
+  );
+}
+
 // Tool call tracking
 const pendingCalls = new Map();
 // Monotonic counter so concurrent tool calls can never share a call id.
@@ -277,10 +316,13 @@ async function handleMCPRequest(request) {
         console.error(
           `MCP client initializing: ${params?.clientInfo?.name || "unknown"}`
         );
+        clientInitialized = true;
+        // The extension may register after this point, so declare that the tool
+        // list can change; without it a client has no reason to ever re-list.
         result = {
           protocolVersion: "2024-11-05",
           capabilities: {
-            tools: {},
+            tools: { listChanged: true },
           },
           serverInfo: {
             name: "browser-mcp-server",
@@ -323,6 +365,10 @@ async function handleMCPRequest(request) {
             tools: getFallbackTools(),
           };
         }
+        // Record what the client now believes, so notifyToolsListChanged only
+        // fires when the answer would actually differ.
+        lastToolSignature =
+          availableTools.length > 0 ? toolSignature(availableTools) : "";
         break;
 
       case "tools/call":
@@ -1599,6 +1645,7 @@ function setupWebSocketHandlers() {
               .map((t) => t.name)
               .join(", ")}`
           );
+          notifyToolsListChanged();
         } else if (message.type === "ping") {
           // Respond to ping with pong
           ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
@@ -1621,6 +1668,7 @@ function setupWebSocketHandlers() {
         console.error("Browser Extension disconnected");
         chromeExtensionSocket = null;
         availableTools = []; // Clear tools when extension disconnects
+        notifyToolsListChanged();
         // Reject any in-flight tool calls immediately so the MCP client
         // sees a real error instead of hanging for up to 30s waiting on
         // a socket that's gone.
@@ -1669,6 +1717,9 @@ app.route('/sse')
       version: SERVER_VERSION
     })}\n\n`);
 
+    // Registered so server-initiated notifications reach this stream.
+    sseClients.add(res);
+
     // Heartbeat to keep connection alive
     const heartbeat = setInterval(() => {
       res.write(`data: ${JSON.stringify({
@@ -1679,6 +1730,7 @@ app.route('/sse')
 
     req.on('close', () => {
       clearInterval(heartbeat);
+      sseClients.delete(res);
       console.error('SSE client disconnected');
     });
 
