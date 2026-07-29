@@ -265,25 +265,30 @@ class ConnectionManager {
 const connectionManager = new ConnectionManager();
 
 // Content script management for background tabs
+// Ping the content script in a tab. Rejects on timeout or extension error.
+function pingContentScript(tabId, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Content script ping timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
+      clearTimeout(timer);
+      if (browser.runtime.lastError) {
+        reject(new Error(browser.runtime.lastError.message));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 async function ensureContentScriptReady(tabId, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Test if content script is responsive
-      const response = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Content script ping timeout'));
-        }, 2000);
-        
-        browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
-          clearTimeout(timeout);
-          if (browser.runtime.lastError) {
-            reject(new Error(browser.runtime.lastError.message));
-          } else {
-            resolve(response);
-          }
-        });
-      });
-      
+      const response = await pingContentScript(tabId, 2000);
+
       if (response && response.success) {
         console.log(`✅ Content script ready in tab ${tabId}`);
         return true;
@@ -334,18 +339,8 @@ async function ensureContentScriptReady(tabId, retries = 3) {
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Test again
-          const testResponse = await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout after injection')), 3000);
-            browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
-              clearTimeout(timeout);
-              if (browser.runtime.lastError) {
-                reject(new Error(browser.runtime.lastError.message));
-              } else {
-                resolve(response);
-              }
-            });
-          });
-          
+          const testResponse = await pingContentScript(tabId, 3000);
+
           if (testResponse && testResponse.success) {
             console.log(`✅ Content script successfully injected into tab ${tabId}`);
             return true;
@@ -397,14 +392,9 @@ async function getTabContentScriptStatus(tabId) {
       return { ready: false, reason: 'restricted_url', url: tab.url };
     }
     
-    const response = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => resolve(null), 3000); // Increase to 3 seconds
-      browser.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
-        clearTimeout(timeout);
-        resolve(response);
-      });
-    });
-    
+    // A failed ping is the answer here, not an error: report the tab as not loaded.
+    const response = await pingContentScript(tabId, 3000).catch(() => null);
+
     if (response && response.success) {
       return { ready: true, reason: 'active', url: tab.url };
     } else {
@@ -1133,29 +1123,33 @@ async function handleMCPRequest(message) {
 }
 
 // Enhanced content script communication with background tab support
-async function sendToContentScript(action, data, targetTabId = null) {
-  let targetTab;
-  
-  if (targetTabId) {
-    // Use specific tab
+// Resolve the tab a tool should act on: an explicit tab id, else the active tab.
+async function resolveTargetTab(tabId = null) {
+  if (tabId) {
     try {
-      targetTab = await browser.tabs.get(targetTabId);
+      return await browser.tabs.get(tabId);
     } catch (error) {
-      throw new Error(`Tab ${targetTabId} not found or inaccessible`);
+      // tabs.get also rejects for reasons other than "not found" (bad id type,
+      // incognito access denied), so keep the underlying message.
+      throw new Error(`Tab ${tabId} not found or inaccessible: ${error.message}`);
     }
-  } else {
-    // Fallback to active tab (maintains compatibility)
-    const [activeTab] = await browser.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    
-    if (!activeTab) {
-      throw new Error('No active tab found');
-    }
-    targetTab = activeTab;
   }
-  
+
+  // tabs.query legitimately returns [] when there is no focused normal window.
+  const [activeTab] = await browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+
+  if (!activeTab) {
+    throw new Error('No active tab found');
+  }
+  return activeTab;
+}
+
+async function sendToContentScript(action, data, targetTabId = null) {
+  const targetTab = await resolveTargetTab(targetTabId);
+
   // Ensure content script is available in the target tab
   await ensureContentScriptReady(targetTab.id);
   
@@ -1173,16 +1167,7 @@ async function sendToContentScript(action, data, targetTabId = null) {
 }
 
 async function navigateToUrl(url, waitFor, timeout = 10000) {
-  const [activeTab] = await browser.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
-
-  // tabs.query legitimately returns [] (no focused normal window), which used
-  // to crash here on activeTab.id. Other callers already guard this.
-  if (!activeTab) {
-    throw new Error("No active tab found");
-  }
+  const activeTab = await resolveTargetTab();
 
   await browser.tabs.update(activeTab.id, { url });
   
@@ -1847,27 +1832,7 @@ async function getSelectedText(params) {
   } = params;
 
   try {
-    let targetTab;
-    
-    if (tab_id) {
-      // Use specific tab
-      try {
-        targetTab = await browser.tabs.get(tab_id);
-      } catch (error) {
-        throw new Error(`Tab ${tab_id} not found or inaccessible`);
-      }
-    } else {
-      // Get the active tab
-      const [activeTab] = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-
-      if (!activeTab) {
-        throw new Error("No active tab found");
-      }
-      targetTab = activeTab;
-    }
+    const targetTab = await resolveTargetTab(tab_id);
 
     // Execute script to get selected text - handle browser differences
     let results;
