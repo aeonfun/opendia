@@ -69,22 +69,11 @@ class ConnectionManager {
     });
   }
 
+  // Reuse a live socket: reconnecting per operation replaced the socket the
+  // request arrived on, so the reply was written to a CONNECTING socket.
   async connect() {
-    if (this.isServiceWorker) {
-      // Reuse a live socket: reconnecting per operation replaced the socket the
-      // request arrived on, so the reply was written to a CONNECTING socket.
-      if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
-        console.log('🔧 Chrome MV3: Creating temporary connection');
-        await this.createConnection();
-      }
-    } else {
-      // Firefox MV2: Maintain persistent connection
-      if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
-        console.log('🦊 Firefox MV2: Creating persistent connection');
-        await this.createConnection();
-      } else {
-        console.log('🦊 Firefox MV2: Using existing connection');
-      }
+    if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
+      await this.createConnection();
     }
   }
 
@@ -236,15 +225,7 @@ class ConnectionManager {
   }
 
   async ensureConnection() {
-    if (this.isServiceWorker) {
-      // Chrome: Always create fresh connection
-      await this.connect();
-    } else {
-      // Firefox: Use existing or create new
-      if (!this.mcpSocket || this.mcpSocket.readyState !== WebSocket.OPEN) {
-        await this.connect();
-      }
-    }
+    await this.connect();
     return this.mcpSocket;
   }
 

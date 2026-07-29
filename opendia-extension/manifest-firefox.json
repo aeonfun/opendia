@@ -19,12 +19,8 @@
     "tabs",
     "activeTab",
     "storage",
-    "webNavigation",
-    "notifications",
     "bookmarks",
     "history",
-    "webRequest",
-    "webRequestBlocking",
     "<all_urls>"
   ],
   "background": {

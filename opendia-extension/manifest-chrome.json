@@ -14,8 +14,6 @@
     "activeTab",
     "storage",
     "scripting",
-    "webNavigation",
-    "notifications",
     "bookmarks",
     "history"
   ],
