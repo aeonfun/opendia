@@ -1,0 +1,14 @@
+{
+  "name": "opendia",
+  "description": "OpenDia — connect your real browser to AI harnesses via MCP.",
+  "owner": {
+    "name": "Aeon Inc"
+  },
+  "plugins": [
+    {
+      "name": "opendia",
+      "source": "./plugins/opendia",
+      "description": "Browser automation through your logged-in Chrome/Firefox session — MCP server, skills, and harness docs."
+    }
+  ]
+}

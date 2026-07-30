@@ -39,7 +39,7 @@ OpenDia lets AI models control your browser automatically. **The key advantage? 
 - ✅ **Local testing**: Perfect for development with Cursor - test with real user sessions
 
 **✨ Key Benefits:**
-- 🔄 **Universal AI Support**: Works with Claude, ChatGPT, Cursor and even local models
+- 🔄 **Universal AI Support**: Works with Claude, ChatGPT, Cursor, Grok Build and even local models
 - 🎯 **Anti-Detection**: Specialized bypasses for Twitter/X, LinkedIn, Facebook
 - 📱 **Smart Automation**: AI understands your pages and finds the right elements
 - 🛡️ **Privacy-First**: Everything runs locally, your data stays with you
@@ -66,6 +66,7 @@ OpenDia exposes a standard MCP server, so it works with any client that speaks t
 - **Claude Desktop** — paste the config below, restart.
 - **Claude Code** — same MCP config, runs from any terminal.
 - **Cursor** — add via Settings → MCP, or paste the same JSON.
+- **Grok Build** — install the OpenDia plugin or add the MCP block to `~/.grok/config.toml` (see [Grok Build](#grok-build) below).
 - **ChatGPT** — works with Auto-Tunnel mode (`npx opendia --tunnel`), then add the ngrok URL as a connector.
 
 **Should work** (any MCP-compatible client): Windsurf, Zed, Continue, Cline, Goose, Open WebUI.
@@ -148,6 +149,37 @@ Add to your Claude Desktop configuration:
 ```
 
 **For Cursor or other AI tools**, use the same configuration or follow their specific setup instructions.
+
+### Grok Build
+
+OpenDia ships a first-class **Grok Build plugin** under [`plugins/opendia/`](../plugins/opendia) (marketplace index: [`.grok-plugin/marketplace.json`](../.grok-plugin/marketplace.json)).
+
+**Option A — Plugin (recommended)**
+
+```bash
+grok plugin marketplace add aeonfun/opendia
+grok plugin install opendia --trust
+```
+
+Enable the plugin in `/plugins` (trust is required for MCP). Details, skills, and troubleshooting: [`plugins/opendia/README.md`](../plugins/opendia/README.md).
+
+**Option B — Manual `config.toml`**
+
+Add to `~/.grok/config.toml` (or a project `.grok/config.toml`):
+
+```toml
+[mcp_servers.opendia]
+command = "npx"
+args = ["-y", "opendia"]
+enabled = true
+startup_timeout_sec = 60
+```
+
+Then install the browser extension and confirm it is connected to `ws://localhost:5555`.
+
+```bash
+grok mcp doctor opendia
+```
 
 ## Usage Modes
 

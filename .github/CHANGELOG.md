@@ -8,6 +8,10 @@ itself rather than reconstructing it at tag time.
 
 ## Unreleased
 
+### Added
+
+- **Grok Build harness + plugin.** Marketplace index at `.grok-plugin/marketplace.json` (and Claude-compatible `.claude-plugin/marketplace.json`), plugin package under `plugins/opendia/` with `.mcp.json`, skills (`opendia`, `opendia-harness`), and harness docs. README lists Grok Build under Compatible AI Clients with plugin and `config.toml` setup.
+
 ### ⚠️ Breaking
 
 - **`--tunnel` now requires a bearer token.** Publishing the MCP server through a
