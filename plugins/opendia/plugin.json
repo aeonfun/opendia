@@ -1,0 +1,27 @@
+{
+  "name": "opendia",
+  "version": "1.0.0",
+  "description": "OpenDia for Grok Build / Claude Code: control your real browser (logged-in sessions, cookies, wallets) via the OpenDia MCP server and extension.",
+  "author": {
+    "name": "Aeon Inc"
+  },
+  "keywords": [
+    "opendia",
+    "browser",
+    "automation",
+    "mcp",
+    "chrome",
+    "firefox",
+    "grok-build",
+    "harness"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/aeonfun/opendia",
+  "homepage": "https://github.com/aeonfun/opendia",
+  "mcpServers": {
+    "opendia": {
+      "command": "npx",
+      "args": ["-y", "opendia"]
+    }
+  }
+}

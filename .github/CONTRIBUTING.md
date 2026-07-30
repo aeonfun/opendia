@@ -13,6 +13,8 @@ both and landing a PR.
 - **New browser tools / site support** — bridging a new capability across the
   server and extension.
 - **Docs** — setup, tunnel mode, client compatibility.
+- **Harness plugins** — Grok Build / Claude Code packaging under `plugins/`
+  (marketplace indexes: `.grok-plugin/`, `.claude-plugin/`).
 
 ## Before you start
 

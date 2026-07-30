@@ -1,0 +1,23 @@
+{
+  "name": "opendia",
+  "description": "OpenDia — connect your real browser to AI harnesses via MCP (Grok Build, Claude Code, Cursor, and more).",
+  "owner": {
+    "name": "Aeon Inc",
+    "email": "hello@aeon.fun"
+  },
+  "plugins": [
+    {
+      "name": "opendia",
+      "description": "Browser automation through your logged-in Chrome/Firefox session — MCP server, skills, and Grok Build harness docs.",
+      "category": "browser",
+      "source": {
+        "type": "local",
+        "path": "./plugins/opendia"
+      },
+      "version": "1.0.0",
+      "homepage": "https://github.com/aeonfun/opendia",
+      "tags": ["browser", "mcp", "automation", "chrome", "firefox", "grok", "harness"],
+      "keywords": ["opendia", "browser-automation", "mcp", "grok-build"]
+    }
+  ]
+}
