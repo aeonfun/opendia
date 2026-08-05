@@ -10,6 +10,11 @@
   <a href="https://bankr.bot/discover/0xbf8e8f0e8866a7052f948c16508644347c57aba3"><img src="../docs/assets/btn-bankr.svg" alt="$aeon on Bankr" height="34" align="absmiddle"></a>
 </p>
 
+<p align="center">
+  <strong>The open alternative to Dia / Perplexity Comet.</strong><br>
+  Connect your browser to AI models &mdash; no browser switching needed. Works seamlessly with Chrome, Firefox, and any Chromium browser. Private, local-first &amp; MCP focused.
+</p>
+
 <div align="center">
 
 [![stars](https://img.shields.io/github/stars/aeonfun/opendia?style=flat-square&label=stars&color=F4EFE1&labelColor=0d0c0a&logo=github&logoColor=F4EFE1)](https://github.com/aeonfun/opendia/stargazers)
@@ -18,11 +23,6 @@
 [![license](https://img.shields.io/badge/license-MIT-F4EFE1?style=flat-square&labelColor=0d0c0a)](../LICENSE)
 
 </div>
-
-<p align="center">
-  <strong>The open alternative to Dia / Perplexity Comet.</strong><br>
-  Connect your browser to AI models &mdash; no browser switching needed. Works seamlessly with Chrome, Firefox, and any Chromium browser. Private, local-first &amp; MCP focused.
-</p>
 
 <p align="center">
   <img src="../preview.gif" alt="OpenDia Demo" />
