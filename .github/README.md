@@ -12,7 +12,8 @@
 
 <p align="center">
   <strong>The open alternative to Dia / Perplexity Comet.</strong><br>
-  Connect your browser to AI models &mdash; no browser switching needed. Works seamlessly with Chrome, Firefox, and any Chromium browser. Private, local-first &amp; MCP focused.
+  Connect your browser to AI models &mdash; no browser switching needed.<br>
+  Works seamlessly with Chrome, Firefox, and any Chromium browser. Private, local-first &amp; MCP focused.
 </p>
 
 <div align="center">
