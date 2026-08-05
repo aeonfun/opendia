@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="196" height="40" viewBox="0 0 196 40" role="img" aria-label="@aeonframework on X">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1a15"/>
+      <stop offset="1" stop-color="#0d0c0a"/>
+    </linearGradient>
+    <style>@keyframes xp{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}.xp{transform-box:fill-box;transform-origin:center;animation:xp 2.6s ease-in-out infinite}</style>
+  </defs>
+  <rect x="0.5" y="0.5" width="195" height="39" rx="19.5" fill="url(#g)" stroke="#F4EFE1" stroke-opacity="0.5"/>
+  <rect x="2" y="1.5" width="192" height="15" rx="12" fill="#F4EFE1" opacity="0.05"/>
+  <g class="xp"><g transform="translate(16,12) scale(0.667)" fill="#F4EFE1">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </g></g>
+  <text x="42" y="25.5" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#F4EFE1">@aeonframework</text>
+</svg>

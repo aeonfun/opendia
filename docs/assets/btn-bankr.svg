@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="118" height="40" viewBox="0 0 118 40" role="img" aria-label="$aeon on Bankr">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1a15"/>
+      <stop offset="1" stop-color="#0d0c0a"/>
+    </linearGradient>
+    <style>@keyframes flip{0%,100%{transform:scaleX(1)}50%{transform:scaleX(0.16)}}.coin{transform-box:fill-box;transform-origin:center;animation:flip 2.8s ease-in-out infinite}</style>
+  </defs>
+  <rect x="0.5" y="0.5" width="117" height="39" rx="19.5" fill="url(#g)" stroke="#F4EFE1" stroke-opacity="0.5"/>
+  <rect x="2" y="1.5" width="114" height="15" rx="12" fill="#F4EFE1" opacity="0.05"/>
+  <g class="coin">
+    <circle cx="25" cy="20" r="8" fill="none" stroke="#F4EFE1" stroke-width="1.5"/>
+    <text x="25" y="24.5" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="11" font-weight="800" fill="#F4EFE1">$</text>
+  </g>
+  <text x="42" y="25.5" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#F4EFE1">$aeon</text>
+</svg>

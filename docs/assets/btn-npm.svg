@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="40" viewBox="0 0 150 40" role="img" aria-label="npx opendia">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1a15"/>
+      <stop offset="1" stop-color="#0d0c0a"/>
+    </linearGradient>
+    <style>@keyframes pk{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}.pk{transform-box:fill-box;transform-origin:center;animation:pk 2.6s ease-in-out infinite}</style>
+  </defs>
+  <rect x="0.5" y="0.5" width="149" height="39" rx="19.5" fill="url(#g)" stroke="#F4EFE1" stroke-opacity="0.5"/>
+  <rect x="2" y="1.5" width="146" height="15" rx="12" fill="#F4EFE1" opacity="0.05"/>
+  <g class="pk">
+    <rect x="16.5" y="12" width="17" height="16" rx="2" fill="none" stroke="#F4EFE1" stroke-width="1.5"/>
+    <path d="M20 24.5V15.5h10v9h-2.5v-6.5h-2v6.5h-2v-6.5h-1v6.5z" fill="#F4EFE1"/>
+  </g>
+  <text x="42" y="25.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="14" font-weight="700" fill="#F4EFE1">npx opendia</text>
+</svg>

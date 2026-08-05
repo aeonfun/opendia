@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="40" viewBox="0 0 96 40" role="img" aria-label="Star">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1a15"/>
+      <stop offset="1" stop-color="#0d0c0a"/>
+    </linearGradient>
+    <style>@keyframes tw{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}.ic{transform-box:fill-box;transform-origin:center;animation:tw 2.4s ease-in-out infinite}</style>
+  </defs>
+  <rect x="0.5" y="0.5" width="95" height="39" rx="19.5" fill="url(#g)" stroke="#F4EFE1" stroke-opacity="0.5"/>
+  <rect x="2" y="1.5" width="92" height="15" rx="12" fill="#F4EFE1" opacity="0.05"/>
+  <path class="ic" d="M25 12.5l2.2 4.9 5.3.5-4 3.6 1.2 5.2-4.7-2.8-4.7 2.8 1.2-5.2-4-3.6 5.3-.5z" fill="#F4EFE1"/>
+  <text x="44" y="25.5" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#F4EFE1">Star</text>
+</svg>

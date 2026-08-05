@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" width="1600" height="480" role="img" aria-label="OPENDIA — connect your browser to AI models. The open alternative to Dia and Comet.">
+  <defs>
+    <pattern id="halftone" width="7" height="7" patternUnits="userSpaceOnUse">
+      <circle cx="1.4" cy="1.4" r="1.1" fill="#F4EFE1"/>
+    </pattern>
+    <radialGradient id="vig" cx="50%" cy="42%" r="66%">
+      <stop offset="0%" stop-color="#17150f"/>
+      <stop offset="60%" stop-color="#0d0c0a"/>
+      <stop offset="100%" stop-color="#060504"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.2"/>
+    </filter>
+    <style>
+      @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+      .rays{transform-box:fill-box;transform-origin:center;animation:spin 70s linear infinite}
+    </style>
+  </defs>
+
+  <!-- background -->
+  <rect width="1600" height="480" fill="url(#vig)"/>
+  <rect width="1600" height="480" fill="url(#halftone)" opacity="0.10"/>
+
+  <!-- sunburst rays behind wordmark -->
+  <g class="rays" transform="translate(800,205)">
+    <g stroke="#F4EFE1" stroke-opacity="0.055" stroke-width="3">
+      <line x1="0" y1="0" x2="760" y2="0"/>
+      <line x1="0" y1="0" x2="658" y2="380"/>
+      <line x1="0" y1="0" x2="380" y2="658"/>
+      <line x1="0" y1="0" x2="0" y2="760"/>
+      <line x1="0" y1="0" x2="-380" y2="658"/>
+      <line x1="0" y1="0" x2="-658" y2="380"/>
+      <line x1="0" y1="0" x2="-760" y2="0"/>
+      <line x1="0" y1="0" x2="-658" y2="-380"/>
+      <line x1="0" y1="0" x2="-380" y2="-658"/>
+      <line x1="0" y1="0" x2="0" y2="-760"/>
+      <line x1="0" y1="0" x2="380" y2="-658"/>
+      <line x1="0" y1="0" x2="658" y2="-380"/>
+    </g>
+  </g>
+
+  <!-- twinkling starfield -->
+  <g fill="#F4EFE1">
+    <circle cx="150" cy="70" r="1.8"><animate attributeName="opacity" values="0.2;1;0.2" dur="3.1s" repeatCount="indefinite"/></circle>
+    <circle cx="470" cy="58" r="1.3"><animate attributeName="opacity" values="0.15;0.8;0.15" dur="4.3s" repeatCount="indefinite"/></circle>
+    <circle cx="300" cy="150" r="1.4"><animate attributeName="opacity" values="0.15;0.85;0.15" dur="5.0s" repeatCount="indefinite"/></circle>
+    <circle cx="120" cy="300" r="1.2"><animate attributeName="opacity" values="0.2;0.7;0.2" dur="4.6s" repeatCount="indefinite"/></circle>
+    <circle cx="240" cy="410" r="1.6"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="3.7s" repeatCount="indefinite"/></circle>
+    <circle cx="620" cy="72" r="1.2"><animate attributeName="opacity" values="0.15;0.75;0.15" dur="4.8s" repeatCount="indefinite"/></circle>
+    <circle cx="980" cy="64" r="1.3"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="3.6s" repeatCount="indefinite"/></circle>
+    <circle cx="1120" cy="82" r="1.5"><animate attributeName="opacity" values="0.2;0.95;0.2" dur="3.4s" repeatCount="indefinite"/></circle>
+    <circle cx="1300" cy="58" r="1.3"><animate attributeName="opacity" values="0.15;0.8;0.15" dur="4.1s" repeatCount="indefinite"/></circle>
+    <circle cx="1460" cy="90" r="1.2"><animate attributeName="opacity" values="0.15;0.7;0.15" dur="5.2s" repeatCount="indefinite"/></circle>
+    <circle cx="1380" cy="360" r="1.7"><animate attributeName="opacity" values="0.2;1;0.2" dur="3.9s" repeatCount="indefinite"/></circle>
+    <circle cx="1210" cy="420" r="1.4"><animate attributeName="opacity" values="0.2;0.85;0.2" dur="4.4s" repeatCount="indefinite"/></circle>
+  </g>
+
+  <!-- wordmark -->
+  <g transform="translate(800,232)">
+    <text x="0" y="0" text-anchor="middle" transform="skewX(-8)"
+      font-family="'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="900" font-style="italic"
+      font-size="120" letter-spacing="4" fill="#F4EFE1">OPENDIA</text>
+  </g>
+
+  <!-- tagline -->
+  <text x="800" y="304" text-anchor="middle"
+    font-family="'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="800" font-style="italic"
+    font-size="30" letter-spacing="1.5" fill="#F4EFE1" fill-opacity="0.92">Connect your browser to AI.</text>
+
+  <!-- stat bubbles -->
+  <g font-family="'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="800" font-style="italic" font-size="20" fill="#0d0c0a">
+    <g transform="translate(549,346)">
+      <rect x="0" y="0" width="138" height="42" rx="21" fill="#F4EFE1" stroke="#0d0c0a" stroke-width="2"/>
+      <text x="69" y="28" text-anchor="middle">18 tools</text>
+    </g>
+    <g transform="translate(702,346)">
+      <rect x="0" y="0" width="172" height="42" rx="21" fill="#F4EFE1" stroke="#0d0c0a" stroke-width="2"/>
+      <text x="86" y="28" text-anchor="middle">any browser</text>
+    </g>
+    <g transform="translate(889,346)">
+      <rect x="0" y="0" width="162" height="42" rx="21" fill="#F4EFE1" stroke="#0d0c0a" stroke-width="2"/>
+      <text x="81" y="28" text-anchor="middle">MCP native</text>
+    </g>
+  </g>
+
+  <!-- heartbeat pulse line -->
+  <path id="beat" d="M70 442 H438 l14 -22 l16 40 l20 -104 l18 132 l16 -46 H1530"
+    fill="none" stroke="#F4EFE1" stroke-opacity="0.55" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle r="5.5" fill="#F4EFE1" filter="url(#soft)">
+    <animateMotion dur="3.4s" repeatCount="indefinite" rotate="auto">
+      <mpath href="#beat"/>
+    </animateMotion>
+  </circle>
+</svg>
