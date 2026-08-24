@@ -26,7 +26,6 @@
     "web-ext": "^10.6.0"
   },
   "overrides": {
-    "adm-zip": "^0.6.0",
     "brace-expansion": "^1.1.16",
     "shell-quote": "^1.9.0"
   }
