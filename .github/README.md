@@ -393,3 +393,7 @@ MIT License - see [LICENSE](../LICENSE) for details.
 ---
 
 **Ready to supercharge your browser with AI? Get started with `npx opendia`! 🚀**
+
+---
+
+Built by [Aaron Elijah Mars](https://aaronjmars.com), founder of Aeon and MiroShark · [@aaronjmars](https://github.com/aaronjmars)
