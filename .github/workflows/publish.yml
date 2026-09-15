@@ -6,7 +6,29 @@ permissions:
   contents: read
   id-token: write
 jobs:
+  test:
+    name: MCP server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: opendia-mcp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: opendia-mcp/package-lock.json
+      - run: npm ci
+      - name: Syntax-check server
+        run: node --check server.js
+      - name: Protocol tests
+        run: node test-protocol.js
+      - name: Connection tests
+        run: node test-connection.js
+
   publish:
+    needs: [test]
     runs-on: ubuntu-latest
     defaults:
       run:
