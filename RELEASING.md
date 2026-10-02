@@ -17,11 +17,15 @@ the repo root:
 
 ```
 cd opendia-mcp && npm version patch --no-git-tag-version
+# then set SERVER_VERSION in opendia-mcp/server.js to the same X.Y.Z
 cd ..
 git commit -am "chore(release): X.Y.Z"
 git tag vX.Y.Z
 git push --follow-tags
 ```
+
+`SERVER_VERSION` is the version the server reports to clients.
+`test-protocol.js` fails if it does not match `package.json`.
 
 CI then runs `npm publish --provenance` on Node 24 in `opendia-mcp/` (npm 11+ is
 required for OIDC).
