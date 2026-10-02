@@ -62,7 +62,7 @@ const AUTH_TOKEN = requiresToken
 
 // Kept in step with opendia-mcp/package.json by the release checklist.
 // package.json can't be required: the published package ships only server.js.
-const SERVER_VERSION = '1.1.1';
+const SERVER_VERSION = '1.1.2';
 
 // Default ports
 const wsPortArg = portValue('--ws-port');

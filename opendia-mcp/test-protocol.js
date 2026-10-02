@@ -40,6 +40,10 @@ async function run() {
     await sleep(300);
     assert('initialize declares tools.listChanged',
       resultFor(1)?.capabilities?.tools?.listChanged === true);
+    const pkgVersion = require('./package.json').version;
+    assert('initialize advertises the package version',
+      resultFor(1)?.serverInfo?.version === pkgVersion,
+      `server=${resultFor(1)?.serverInfo?.version} package=${pkgVersion}`);
 
     // --- cold tools/list, before the extension connects ---
     send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });

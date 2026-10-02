@@ -20,6 +20,23 @@ if [ ! -d "opendia-extension" ]; then
     exit 1
 fi
 
+# The DXT ships the same server as the npm package, so it takes its version
+# from opendia-mcp/package.json instead of a hand-kept copy.
+VERSION=$(python3 -c 'import json; print(json.load(open("opendia-mcp/package.json"))["version"])')
+
+# The heredocs below are quoted (the manifest uses ${__dirname}), so the
+# version goes in as a __VERSION__ placeholder that this fills afterwards.
+stamp_version() {
+    python3 - "$1" "$VERSION" <<'PY'
+import sys
+path, version = sys.argv[1], sys.argv[2]
+with open(path) as fh:
+    text = fh.read()
+with open(path, "w") as fh:
+    fh.write(text.replace("__VERSION__", version))
+PY
+}
+
 # Clean and create dist directory
 echo "🧹 Cleaning previous build..."
 rm -rf dist
@@ -34,7 +51,7 @@ cp opendia-mcp/server.js dist/opendia-dxt/
 cat > dist/opendia-dxt/package.json << 'EOF'
 {
   "name": "opendia",
-  "version": "1.1.0",
+  "version": "__VERSION__",
   "description": "🎯 OpenDia - The open alternative to Dia. Connect your browser to AI models with anti-detection bypass for Twitter/X, LinkedIn, Facebook",
   "main": "server.js",
   "scripts": {
@@ -67,6 +84,7 @@ cat > dist/opendia-dxt/package.json << 'EOF'
   }
 }
 EOF
+stamp_version dist/opendia-dxt/package.json
 
 # Install dependencies
 echo "⬇️  Installing dependencies..."
@@ -124,7 +142,7 @@ cat > dist/opendia-dxt/manifest.json << 'EOF'
   "dxt_version": "0.1",
   "name": "opendia",
   "display_name": "OpenDia - Browser Automation", 
-  "version": "1.1.0",
+  "version": "__VERSION__",
   "description": "🎯 OpenDia - The open alternative to Dia. Connect your browser to AI models with anti-detection bypass for Twitter/X, LinkedIn, Facebook + universal automation",
   "author": {
     "name": "Aeon Inc",
@@ -258,6 +276,8 @@ cat > dist/opendia-dxt/manifest.json << 'EOF'
   ]
 }
 EOF
+
+stamp_version dist/opendia-dxt/manifest.json
 
 # Validate JSON syntax
 echo "🔍 Validating manifest.json..."
