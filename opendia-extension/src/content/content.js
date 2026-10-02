@@ -1725,7 +1725,11 @@ class BrowserAutomation {
     const clean1 = domain1.replace(/^www\./, '');
     const clean2 = domain2.replace(/^www\./, '');
     
-    return clean1 === clean2;
+    // A subdomain on either side counts as the same site. Match on a dot
+    // boundary so notexample.com is not treated as part of example.com.
+    return clean1 === clean2 ||
+      clean1.endsWith('.' + clean2) ||
+      clean2.endsWith('.' + clean1);
   }
 
   // Extract domain from URL
