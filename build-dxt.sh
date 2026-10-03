@@ -47,62 +47,24 @@ echo "📦 Setting up package..."
 # Copy server files
 cp opendia-mcp/server.js dist/opendia-dxt/
 
-# Create optimized package.json for DXT
-cat > dist/opendia-dxt/package.json << 'EOF'
-{
-  "name": "opendia",
-  "version": "__VERSION__",
-  "description": "🎯 OpenDia - The open alternative to Dia. Connect your browser to AI models with anti-detection bypass for Twitter/X, LinkedIn, Facebook",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "keywords": [
-    "mcp",
-    "browser", 
-    "automation",
-    "ai",
-    "claude",
-    "chrome",
-    "firefox",
-    "extension",
-    "twitter",
-    "linkedin", 
-    "facebook",
-    "anti-detection",
-    "dxt"
-  ],
-  "author": "Aeon Inc",
-  "license": "MIT",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.21.2", 
-    "ws": "^8.18.0"
-  },
-  "engines": {
-    "node": ">=16.0.0"
-  }
-}
-EOF
-stamp_version dist/opendia-dxt/package.json
+# Use the npm package's own package.json and lockfile so the DXT gets the
+# same pinned production dependencies as `npx opendia`.
+cp opendia-mcp/package.json opendia-mcp/package-lock.json dist/opendia-dxt/
 
 # Install dependencies
 echo "⬇️  Installing dependencies..."
 cd dist/opendia-dxt
-npm install --production --silent
+npm ci --omit=dev --silent --no-audit --no-fund
 cd ../..
 
-# Build and copy browser extension. The install instructions below point at
-# extension/dist/{chrome,firefox}, so those have to exist in the bundle.
-echo "🌐 Building browser extension..."
-cd opendia-extension
-npm install --silent
-npm run build --silent
-cd ..
+# Drop docs, tests and tooling config from node_modules. Licenses stay.
+echo "✂️  Pruning node_modules..."
+find dist/opendia-dxt/node_modules -type f -iname '*.md' ! -iname 'license*' -delete
+find dist/opendia-dxt/node_modules -type d \( -name test -o -name tests -o -name example -o -name examples -o -name .github \) -prune -exec rm -rf {} +
+find dist/opendia-dxt/node_modules -type f \( -name '.eslintrc*' -o -name '.nycrc*' -o -name '.editorconfig' -o -name '.travis.yml' \) -delete
 
-echo "🌐 Copying browser extension..."
-cp -r opendia-extension dist/opendia-dxt/extension
-rm -rf dist/opendia-dxt/extension/node_modules
+# The browser extension is not bundled: it ships as its own zips on the
+# releases page, and the DXT only needs the MCP server.
 
 # Copy logo/icon files for DXT - try multiple sources
 echo "🎨 Copying logo files..."
@@ -110,9 +72,9 @@ LOGO_COPIED=false
 
 # Try different icon files from the extension
 for icon_file in "icon-128.png" "icon-48.png" "icon-32.png" "icon-16.png" "icon.png"; do
-    if [ -f "opendia-extension/$icon_file" ]; then
-        cp "opendia-extension/$icon_file" dist/opendia-dxt/icon.png
-        echo "✅ Logo copied from extension/$icon_file"
+    if [ -f "opendia-extension/icons/$icon_file" ]; then
+        cp "opendia-extension/icons/$icon_file" dist/opendia-dxt/icon.png
+        echo "✅ Logo copied from extension/icons/$icon_file"
         LOGO_COPIED=true
         break
     fi
@@ -288,9 +250,8 @@ if ! python3 -m json.tool dist/opendia-dxt/manifest.json > /dev/null 2>&1; then
 fi
 echo "✅ Manifest JSON is valid"
 
-# Copy documentation
-echo "📝 Adding documentation..."
-cp README.md dist/opendia-dxt/ 2>/dev/null || echo "⚠️  README.md not found, skipping"
+# Copy license
+echo "📝 Adding license..."
 cp LICENSE dist/opendia-dxt/ 2>/dev/null || echo "⚠️  LICENSE not found, skipping"
 
 # Create extension installation guide
@@ -308,8 +269,7 @@ cat > dist/opendia-dxt/EXTENSION_INSTALL.md << 'EOF'
 
 **📦 Get Latest Extension:**
 Download the latest extension from: https://github.com/aeonfun/opendia/releases
-
-**Or use the included extension in this DXT package:**
+(the extension is not bundled in this DXT package)
 
 #### For Chrome/Chromium Browsers
 
@@ -318,16 +278,18 @@ Download the latest extension from: https://github.com/aeonfun/opendia/releases
    - Toggle "Developer mode" in the top right
 
 2. **Install Extension**
+   - Extract `opendia-chrome-X.Y.Z.zip` from the releases page to a folder
    - Click "Load unpacked"
-   - Select the `extension/dist/chrome/` folder from this DXT package
+   - Select the extracted folder
    - Extension should appear in your extensions list with OpenDia icon
 
 #### For Firefox
 
 1. **Load Temporary Add-on**
    - Go to `about:debugging#/runtime/this-firefox`
+   - Extract `opendia-firefox-X.Y.Z.zip` from the releases page to a folder
    - Click "Load Temporary Add-on..."
-   - Select the `manifest.json` file from the `extension/dist/firefox/` folder
+   - Select the `manifest.json` file from the extracted folder
 
 > **Firefox Note**: Extensions are loaded as temporary add-ons and will be removed when Firefox restarts. For permanent installation, use the signed extension from GitHub releases.
 
@@ -424,6 +386,6 @@ echo ""
 echo "🚀 Installation:"
 echo "1. Double-click the .dxt file"
 echo "2. Or: Claude Desktop Settings → Extensions → Install Extension"
-echo "3. Install Chrome/Firefox extension from extension/ folder"
+echo "3. Install the Chrome/Firefox extension from https://github.com/aeonfun/opendia/releases"
 echo ""
 echo "🎯 Features ready: Anti-detection bypass + universal automation"

@@ -101,6 +101,15 @@ itself rather than reconstructing it at tag time.
   a viewport scan. The legacy single-phase analysis engine went with it — reaching
   it required a `phase` value that both tool schemas forbid. `page_analyze` output
   is unchanged, because none of the removed code could run.
+- **The browser extension is no longer bundled in `opendia.dxt`.** The DXT
+  carried the extension source plus built Chrome and Firefox copies, each with the
+  11 MB `logo.mp4`, so a fresh build came out at 36 MB. Claude Desktop only runs
+  the MCP server from it, and the extension already ships as its own zips on the
+  Releases page. The DXT now holds just the server, its production dependencies
+  (installed from the npm package's lockfile, docs and tests pruned), the manifest,
+  the icon and the license: about 0.7 MB. Installing from the lockfile also moves
+  the DXT from Express 4 to Express 5, the version `npx opendia` and CI already use. It also gets its icon back, which a fresh
+  build had been silently dropping since the extension icons moved to `icons/`.
 
 ### Maintenance
 
