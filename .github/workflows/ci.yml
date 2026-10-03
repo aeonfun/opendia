@@ -26,6 +26,8 @@ jobs:
         run: node test-protocol.js
       - name: Connection tests
         run: node test-connection.js
+      - name: Config tests
+        run: node test-config.js
 
   extension:
     name: Browser extension

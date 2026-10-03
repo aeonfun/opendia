@@ -161,10 +161,10 @@ cat > dist/opendia-dxt/manifest.json << 'EOF'
       "args": ["${__dirname}/server.js"],
       "env": {
         "NODE_ENV": "production",
-        "WS_PORT": "${user_config.ws_port}",
-        "HTTP_PORT": "${user_config.http_port}",
-        "ENABLE_TUNNEL": "${user_config.enable_tunnel}",
-        "SAFETY_MODE": "${user_config.safety_mode}"
+        "OPENDIA_WS_PORT": "${user_config.ws_port}",
+        "OPENDIA_HTTP_PORT": "${user_config.http_port}",
+        "OPENDIA_ENABLE_TUNNEL": "${user_config.enable_tunnel}",
+        "OPENDIA_TOKEN": "${user_config.auth_token}"
       }
     }
   },
@@ -173,7 +173,7 @@ cat > dist/opendia-dxt/manifest.json << 'EOF'
     "ws_port": {
       "type": "number",
       "title": "WebSocket Port",
-      "description": "Port for Chrome/Firefox extension connection",
+      "description": "Port for Chrome/Firefox extension connection. The extension finds it through the HTTP port.",
       "default": 5555,
       "min": 1024,
       "max": 65535
@@ -181,7 +181,7 @@ cat > dist/opendia-dxt/manifest.json << 'EOF'
     "http_port": {
       "type": "number",
       "title": "HTTP Port", 
-      "description": "Port for HTTP/SSE server",
+      "description": "Port for HTTP/SSE server. If you change it to a port the extension does not probe (5556-5558, 3001, 6001-6003), enter the same port in the extension popup under Custom HTTP Port.",
       "default": 5556,
       "min": 1024,
       "max": 65535
@@ -189,14 +189,15 @@ cat > dist/opendia-dxt/manifest.json << 'EOF'
     "enable_tunnel": {
       "type": "boolean",
       "title": "Auto-Tunnel",
-      "description": "Automatically create ngrok tunnel for online AI access (requires ngrok)",
+      "description": "Automatically create ngrok tunnel for online AI access (requires ngrok). Safety Mode is set in the browser extension popup, not here.",
       "default": false
     },
-    "safety_mode": {
-      "type": "boolean",
-      "title": "Safety Mode",
-      "description": "Block write/edit tools (element_click, element_fill) by default",
-      "default": false
+    "auth_token": {
+      "type": "string",
+      "title": "Tunnel Auth Token",
+      "description": "Bearer token required on /sse in tunnel mode. Leave blank to generate a new one at each start (printed in the server log).",
+      "sensitive": true,
+      "required": false
     }
   },
   

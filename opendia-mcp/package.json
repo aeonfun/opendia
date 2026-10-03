@@ -11,7 +11,7 @@
     "tunnel": "node server.js --tunnel",
     "sse-only": "node server.js --sse-only",
     "tunnel-sse": "node server.js --tunnel --sse-only",
-    "test": "node --check server.js && node test-protocol.js && node test-connection.js"
+    "test": "node --check server.js && node test-protocol.js && node test-connection.js && node test-config.js"
   },
   "keywords": [
     "mcp",

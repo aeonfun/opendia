@@ -19,8 +19,10 @@ const HTTP_PORT = 45554;
 
 const { assert, state } = makeAsserter();
 
-// Loads the real background.js under stubbed extension globals.
-function loadBackground(wsPort, httpPort) {
+// Loads the real background.js under stubbed extension globals. `storage` seeds
+// browser.storage.local and `probed` collects every URL discovery fetches.
+function loadBackground(wsPort, httpPort, { storage = {}, probed = [] } = {}) {
+  const answerPort = storage.customHttpPort ?? 5556;
   const manifest = { manifest_version: 2, applications: { gecko: { id: 'opendia@test' } } };
   const sandbox = {
     console: { log: () => {}, error: () => {}, warn: () => {} },
@@ -30,7 +32,8 @@ function loadBackground(wsPort, httpPort) {
     // discoverServerPorts probes a fixed port list that will not contain our
     // test port, so answer the first probe and point it at the real server.
     fetch: async (url) => {
-      if (!url.includes(':5556/ports')) throw new Error('connection refused');
+      probed.push(url);
+      if (!url.includes(`:${answerPort}/ports`)) throw new Error('connection refused');
       return {
         ok: true,
         json: async () => ({
@@ -46,7 +49,10 @@ function loadBackground(wsPort, httpPort) {
   sandbox.globalThis = sandbox;
   sandbox.browser = {
     runtime: { getManifest: () => manifest, onMessage: { addListener: () => {} }, lastError: null },
-    storage: { local: { get: (_keys, cb) => cb({}), set: () => {} } },
+    storage: { local: {
+      get: (_keys, cb) => (cb ? cb({ ...storage }) : Promise.resolve({ ...storage })),
+      set: () => {},
+    } },
     tabs: { query: async () => [], get: async () => ({}), sendMessage: () => {} },
   };
 
@@ -117,6 +123,15 @@ async function run() {
       `_repeat=${cm.reconnectTimer && cm.reconnectTimer._repeat}`);
     cm.clearReconnectTimer();
     assert('clearReconnectTimer disarms it', cm.reconnectTimer === null);
+
+    // --- A custom HTTP port saved in the popup is probed first ---
+    const probed = [];
+    const cmCustom = loadBackground(wsPort, httpPort, { storage: { customHttpPort: 6002 }, probed });
+    const found = await cmCustom.discoverServerPorts();
+    assert('custom HTTP port probed first', probed[0] === 'http://localhost:6002/ports', probed[0]);
+    assert('custom HTTP port probed once', probed.filter((u) => u.includes(':6002/')).length === 1,
+      probed.join(' '));
+    assert('discovery returns the custom port answer', found?.websocket === wsPort);
   } finally {
     srv.kill();
     await sleep(200);

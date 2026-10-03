@@ -29,6 +29,19 @@ browser.storage.local.get(['safetyMode'], (result) => {
   safetyModeEnabled = result.safetyMode || false;
 });
 
+// HTTP port the user set in the popup, or null. Read fresh on every discovery
+// so a change applies without restarting the extension. Promise form, so it
+// works on both Chrome MV3 and Firefox's native browser.* API.
+async function getCustomHttpPort() {
+  try {
+    const result = await browser.storage.local.get('customHttpPort');
+    const port = Number(result?.customHttpPort);
+    return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 // Cross-browser WebSocket connection manager
 class ConnectionManager {
   constructor() {
@@ -164,10 +177,15 @@ class ConnectionManager {
   }
 
   async discoverServerPorts() {
-    // Try common HTTP ports to find the server
+    // Try common HTTP ports to find the server. A custom port from the popup
+    // goes first, for a server started on a port outside this list.
     const commonPorts = [5556, 5557, 5558, 3001, 6001, 6002, 6003];
+    const customPort = await getCustomHttpPort();
+    const ports = customPort
+      ? [customPort, ...commonPorts.filter((port) => port !== customPort)]
+      : commonPorts;
     
-    for (const httpPort of commonPorts) {
+    for (const httpPort of ports) {
       try {
         const response = await fetch(`http://localhost:${httpPort}/ports`);
         if (response.ok) {
@@ -2012,6 +2030,14 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === "setSafetyMode") {
     safetyModeEnabled = request.enabled;
     console.log(`🛡️ Safety Mode ${safetyModeEnabled ? 'ENABLED' : 'DISABLED'}`);
+    sendResponse({ success: true });
+  } else if (request.action === "setCustomHttpPort") {
+    // Force discovery on the next connect so the new port is probed, and try
+    // now if nothing is connected instead of waiting out the backoff.
+    MCP_SERVER_URL = 'ws://localhost:5555';
+    if (!connectionManager.getStatus().connected) {
+      connectionManager.connect().catch(() => {});
+    }
     sendResponse({ success: true });
   }
   return true; // Keep the message channel open

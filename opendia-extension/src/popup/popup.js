@@ -135,6 +135,41 @@ safetyModeToggle.addEventListener('change', () => {
   });
 });
 
+// Custom HTTP Port Management
+const customHttpPortInput = document.getElementById("customHttpPort");
+
+// Promise form (not a callback) so it behaves the same on Chrome MV3 and
+// Firefox's native browser.* API.
+function loadCustomHttpPort() {
+  storageAPI.local.get(['customHttpPort']).then((result) => {
+    customHttpPortInput.value = result?.customHttpPort ?? '';
+  });
+}
+
+loadCustomHttpPort();
+
+// Save on change; a blank field clears it and goes back to auto-discovery
+customHttpPortInput.addEventListener('change', () => {
+  const raw = customHttpPortInput.value.trim();
+  const port = Number(raw);
+  let save;
+
+  if (raw === '' && !customHttpPortInput.validity.badInput) {
+    save = storageAPI.local.remove('customHttpPort');
+  } else if (Number.isInteger(port) && port >= 1 && port <= 65535) {
+    save = storageAPI.local.set({ customHttpPort: port });
+  } else {
+    loadCustomHttpPort(); // Invalid entry: show the saved value again
+    return;
+  }
+
+  // Notify background script once the value is stored, so its next port
+  // discovery reads the new one
+  save.then(() => {
+    runtimeAPI.sendMessage({ action: "setCustomHttpPort" });
+  });
+});
+
 // Video speed control based on mouse movement
 const logoVideo = document.querySelector('.logo video');
 let mouseTimeout;
