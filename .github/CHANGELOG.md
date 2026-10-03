@@ -68,6 +68,16 @@ itself rather than reconstructing it at tag time.
 
 ### Fixed
 
+- **DXT settings now reach the server.** The Claude Desktop DXT passed its
+  WebSocket Port, HTTP Port and Auto-Tunnel settings as env variables the server
+  never read, so changing them did nothing. The server now reads
+  `OPENDIA_WS_PORT`, `OPENDIA_HTTP_PORT`, `OPENDIA_ENABLE_TUNNEL` and
+  `OPENDIA_TOKEN` (flags still win), and the DXT maps its settings onto them. The
+  DXT gains an optional Tunnel Auth Token setting and drops its Safety Mode
+  setting, which had no effect; Safety Mode stays a toggle in the extension popup.
+  The popup also gets a Custom HTTP Port field, checked first during server
+  discovery, so the extension can find a server moved off the usual ports. (#85)
+
 - **Tools no longer report failures to the model as success.** `get_history`
   rendered a browser API failure as "No history items found", `get_selected_text`
   rendered four distinct failures as "No text selected", `page_navigate` claimed

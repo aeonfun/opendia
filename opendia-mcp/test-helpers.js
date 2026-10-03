@@ -22,9 +22,14 @@ function makeAsserter() {
 // conflict, which would otherwise leave the test polling an address nothing is
 // bound to. On failure the captured stderr is included, so a CI failure is
 // diagnosable from the log alone.
-function startServer({ wsPort, httpPort, timeoutMs = 30000 } = {}) {
-  const proc = spawn('node', [SERVER, `--ws-port=${wsPort}`, `--http-port=${httpPort}`], {
+//
+// `args` replaces the default port flags and `env` is merged over the parent
+// environment, for suites that configure the server some other way.
+function startServer({ wsPort, httpPort, args, env, timeoutMs = 30000 } = {}) {
+  const argv = args ?? [`--ws-port=${wsPort}`, `--http-port=${httpPort}`];
+  const proc = spawn(process.execPath, [SERVER, ...argv], {
     stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, ...env },
   });
 
   let stderr = '';
@@ -65,4 +70,4 @@ function startServer({ wsPort, httpPort, timeoutMs = 30000 } = {}) {
   });
 }
 
-module.exports = { sleep, makeAsserter, startServer };
+module.exports = { SERVER, sleep, makeAsserter, startServer };

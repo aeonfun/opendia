@@ -143,6 +143,13 @@ Wired it up with something else? Open a PR — the list grows as MCP grows.
 2. Double-click the `.dxt` file to install automatically
 3. The MCP will be added to your Claude Desktop configuration
 
+The DXT settings in Claude Desktop (WebSocket Port, HTTP Port, Auto-Tunnel,
+Tunnel Auth Token) are passed to the server as the `OPENDIA_*` environment
+variables described under [Port Configuration](#port-configuration). If you move
+the HTTP port outside the ports the extension checks (5556-5558, 3001,
+6001-6003), enter it under **Custom HTTP Port** in the extension popup. Safety
+Mode is a toggle in the extension popup, not a DXT setting.
+
 **Option 2: Manual Configuration**
 Add to your Claude Desktop configuration:
 ```json
@@ -209,6 +216,21 @@ npx opendia --ws-port=5555 --http-port=5556  # Specify individually
 # Note: Existing OpenDia processes are automatically terminated on startup
 ```
 
+The same settings can come from environment variables, which is how the Claude
+Desktop DXT applies its settings. A command-line flag always wins over the
+matching variable, and an empty variable counts as unset.
+
+| Variable | Same as | Notes |
+| --- | --- | --- |
+| `OPENDIA_WS_PORT` | `--ws-port=` | Integer 1-65535 |
+| `OPENDIA_HTTP_PORT` | `--http-port=` | Integer 1-65535 |
+| `OPENDIA_ENABLE_TUNNEL` | `--tunnel` | `1`, `true` or `yes` turns it on |
+| `OPENDIA_TOKEN` | `--token=` | Bearer token for tunnel mode |
+
+The browser extension finds the server by checking HTTP ports 5556-5558, 3001
+and 6001-6003. For any other HTTP port, enter it under **Custom HTTP Port** in
+the extension popup so it is checked first.
+
 ### Auto-Tunnel Mode
 ```bash
 npx opendia --tunnel
@@ -218,8 +240,8 @@ npx opendia --tunnel
 - Local functionality preserved
 
 Because the tunnel is public, `/sse` requires a bearer token in this mode. The
-server prints one at startup; pass `--token=<value>` to pin a fixed one across
-restarts. Send it with every request:
+server prints one at startup; pass `--token=<value>` (or set `OPENDIA_TOKEN`) to
+pin a fixed one across restarts. Send it with every request:
 
 ```bash
 curl -H "Authorization: Bearer <token>" https://<tunnel>.ngrok-free.app/sse

@@ -183,6 +183,10 @@ const response = await fetch(`http://localhost:${port}/ports`);
 const portInfo = await response.json();
 ```
 
+A **Custom HTTP Port** set in the popup (saved as `customHttpPort` in
+`storage.local`) is checked before this list, for servers started on any other
+HTTP port.
+
 ### Background Tab Support
 
 All tools support background tab targeting:

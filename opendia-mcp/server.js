@@ -12,13 +12,35 @@ const { spawn } = require('child_process');
 
 // Command line argument parsing
 const args = process.argv.slice(2);
-const enableTunnel = args.includes('--tunnel') || args.includes('--auto-tunnel');
 const sseOnly = args.includes('--sse-only');
 
 function usageError(message) {
   console.error(`❌ ${message}`);
   process.exit(1);
 }
+
+// Environment fallbacks for hosts that configure the server through env rather
+// than argv: the Claude Desktop DXT maps its user_config settings onto these
+// OPENDIA_* variables. A flag on the command line always wins over the env.
+//
+// Unlike an empty flag, an empty variable means "not set": an optional DXT
+// field the user left blank arrives as "", and some hosts pass the raw
+// `${user_config.x}` placeholder through instead of substituting it.
+function envValue(name) {
+  const raw = process.env[name];
+  if (raw === undefined) return null;
+  const value = raw.trim();
+  if (value === '' || /^\$\{user_config\.[^}]*\}$/.test(value)) return null;
+  return value;
+}
+
+function envFlag(name) {
+  const value = envValue(name);
+  return value !== null && ['1', 'true', 'yes'].includes(value.toLowerCase());
+}
+
+const enableTunnel = args.includes('--tunnel') || args.includes('--auto-tunnel') ||
+  envFlag('OPENDIA_ENABLE_TUNNEL');
 
 // Returns the text after `=`, or null when the flag is absent. An empty value
 // (`--token=`) is a usage error, not an empty string: treating it as falsy is
@@ -32,13 +54,20 @@ function argValue(name) {
 }
 
 // Digits only — Number() would accept '0x1f' and parseInt() would accept '80abc'.
-function portValue(name) {
-  const raw = argValue(name);
+function parsePort(name, raw) {
   if (raw === null) return null;
   if (!/^\d+$/.test(raw) || raw < 1 || raw > 65535) {
     usageError(`${name}=${raw} is not a valid port (expected an integer 1-65535)`);
   }
   return Number(raw);
+}
+
+function portValue(name) {
+  return parsePort(name, argValue(name));
+}
+
+function envPortValue(name) {
+  return parsePort(name, envValue(name));
 }
 
 // `POST /sse` hands whatever it receives to handleMCPRequest, which drives the
@@ -54,7 +83,7 @@ function isLoopbackHost(host) {
 // Once the MCP surface is reachable beyond this machine — widened bind or an
 // ngrok tunnel — loopback stops being the boundary and callers must present a
 // token. Locally it stays off so existing setups keep working untouched.
-const explicitToken = argValue('--token');
+const explicitToken = argValue('--token') ?? envValue('OPENDIA_TOKEN');
 const requiresToken = enableTunnel || !isLoopbackHost(HTTP_HOST);
 const AUTH_TOKEN = requiresToken
   ? (explicitToken ?? crypto.randomBytes(24).toString('hex'))
@@ -68,8 +97,10 @@ const SERVER_VERSION = '1.1.3';
 const wsPortArg = portValue('--ws-port');
 const httpPortArg = portValue('--http-port');
 const portArg = portValue('--port');
-let WS_PORT = wsPortArg ?? portArg ?? 5555;
-let HTTP_PORT = httpPortArg ?? (portArg !== null ? portArg + 1 : 5556);
+const wsPortEnv = envPortValue('OPENDIA_WS_PORT');
+const httpPortEnv = envPortValue('OPENDIA_HTTP_PORT');
+let WS_PORT = wsPortArg ?? portArg ?? wsPortEnv ?? 5555;
+let HTTP_PORT = httpPortArg ?? (portArg !== null ? portArg + 1 : httpPortEnv ?? 5556);
 if (HTTP_PORT > 65535) {
   usageError(`--port=${portArg} leaves no room for the HTTP port (${HTTP_PORT})`);
 }
@@ -1935,7 +1966,7 @@ async function startServer() {
         console.error('');
         console.error('🔑 This URL is public — the tunnel requires a token:');
         console.error(`   Authorization: Bearer ${AUTH_TOKEN}`);
-        console.error('   Reuse a fixed one across restarts with --token=<value>');
+        console.error('   Reuse a fixed one across restarts with --token=<value> or OPENDIA_TOKEN');
         console.error('');
         console.error('💡 ChatGPT: Settings → Connectors → Custom Connector');
         console.error('💡 Claude Web: Add as external MCP server (if supported)');
@@ -1985,6 +2016,7 @@ async function startServer() {
   console.error(`   Current: WebSocket=${WS_PORT}, HTTP=${HTTP_PORT}`);
   console.error('   Custom: npx opendia --ws-port=6000 --http-port=6001');
   console.error('   Or: npx opendia --port=6000 (uses 6000 and 6001)');
+  console.error('   Env: OPENDIA_WS_PORT / OPENDIA_HTTP_PORT (flags take precedence)');
   console.error('   Note: Existing processes are automatically terminated');
   console.error('');
 }

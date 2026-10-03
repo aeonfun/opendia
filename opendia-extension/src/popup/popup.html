@@ -237,7 +237,8 @@
         transform: translateY(0);
       }
 
-      .safety-mode {
+      .safety-mode,
+      .port-setting {
         background: rgba(255, 255, 255, 0.6);
         padding: 16px;
         border-radius: 10px;
@@ -247,13 +248,15 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       }
 
-      .safety-row {
+      .safety-row,
+      .port-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
       }
 
-      .safety-label {
+      .safety-label,
+      .port-label {
         color: #374151;
         font-weight: 600;
         font-size: 0.875rem;
@@ -310,6 +313,24 @@
       .safety-slider:hover {
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       }
+
+      .port-input {
+        width: 80px;
+        padding: 6px 8px;
+        border: 1px solid rgba(0, 129, 247, 0.2);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.5);
+        color: var(--text-color);
+        font-size: 0.875rem;
+        text-align: right;
+        transition: all 0.3s ease;
+      }
+
+      .port-input:focus {
+        outline: none;
+        border-color: rgba(255, 117, 202, 0.4);
+        box-shadow: 0 2px 8px rgba(255, 117, 202, 0.2);
+      }
     </style>
   </head>
   <body>
@@ -362,6 +383,18 @@
           <input type="checkbox" id="safetyMode">
           <span class="safety-slider"></span>
         </label>
+      </div>
+    </div>
+
+    <div class="port-setting">
+      <div class="port-row">
+        <span class="port-label tooltip">
+          Custom HTTP Port
+          <span class="tooltip-content">
+            Checked first when finding the server. Set it if the server runs on an HTTP port other than 5556-5558, 3001 or 6001-6003. Leave blank for auto-discovery.
+          </span>
+        </span>
+        <input type="number" id="customHttpPort" class="port-input" min="1" max="65535" step="1" placeholder="Auto">
       </div>
     </div>
 
