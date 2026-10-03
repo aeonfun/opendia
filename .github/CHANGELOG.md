@@ -109,7 +109,7 @@ itself rather than reconstructing it at tag time.
   (installed from the npm package's lockfile, docs and tests pruned), the manifest,
   the icon and the license: about 0.7 MB. Installing from the lockfile also moves
   the DXT from Express 4 to Express 5, the version `npx opendia` and CI already use. It also gets its icon back, which a fresh
-  build had been silently dropping since the extension icons moved to `icons/`.
+  build had been silently dropping since the extension icons moved to `icons/`. (#87)
 
 ### Maintenance
 
