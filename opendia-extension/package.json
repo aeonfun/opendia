@@ -1,6 +1,6 @@
 {
   "name": "opendia-extension",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Connect your browser to AI models",
   "scripts": {
     "build": "node build.js",
