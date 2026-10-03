@@ -26,7 +26,7 @@
     "web-ext": "^10.7.0"
   },
   "overrides": {
-    "brace-expansion": "^1.1.16",
+    "brace-expansion": "^1.1.21",
     "shell-quote": "^1.9.0"
   }
 }
