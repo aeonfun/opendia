@@ -434,6 +434,14 @@ class BrowserAutomation {
   async quickDiscovery({ intent_hint, max_results = 5 }) {
     const startTime = performance.now();
 
+    // "discover" is the start of a new analysis cycle (a "detailed" call that
+    // follows reuses this cycle's ids, so it must not be cleared here) - reset
+    // both registries so a long-lived SPA session (the anti-detection targets
+    // this is built for) doesn't accumulate one entry per analyze call for as
+    // long as the tab stays open.
+    this.elementRegistry.clear();
+    this.quickRegistry.clear();
+
     // Detect page type and get basic metrics
     const pageType = this.detectPageType();
     const viewportElements = this.countViewportElements();
@@ -1299,11 +1307,18 @@ class BrowserAutomation {
 
   getElementById(id) {
     // Check quick registry first (for q1, q2, etc.)
-    if (id.startsWith("q")) {
-      return this.quickRegistry.get(id);
+    const element = id.startsWith("q")
+      ? this.quickRegistry.get(id)
+      // Then check main registry (for element_1, element_2, etc.)
+      : this.elementRegistry.get(id);
+    // A client-side route change (content scripts persist across it, unlike a
+    // full page load) can leave a registered id pointing at a node the page
+    // itself already removed. Treat that the same as a cache miss rather than
+    // handing a detached node back to a caller expecting a live element.
+    if (element && !element.isConnected) {
+      return undefined;
     }
-    // Then check main registry (for element_1, element_2, etc.)
-    return this.elementRegistry.get(id);
+    return element;
   }
 
   getElementName(element) {
