@@ -46,6 +46,8 @@ const ANTI_DETECTION_PLATFORMS = {
   },
 };
 
+// Upper bound per element registry, so a long-lived tab can't grow it forever.
+const MAX_REGISTRY_ENTRIES = 1000;
 
 class BrowserAutomation {
   constructor() {
@@ -418,6 +420,8 @@ class BrowserAutomation {
     element_ids,
     max_results = 5,
   }) {
+    this.pruneRegistries();
+
     // The phase enum is discover|detailed on both sides of the wire, so the
     // dispatch is total.
     if (phase === "detailed") {
@@ -433,14 +437,6 @@ class BrowserAutomation {
 
   async quickDiscovery({ intent_hint, max_results = 5 }) {
     const startTime = performance.now();
-
-    // "discover" is the start of a new analysis cycle (a "detailed" call that
-    // follows reuses this cycle's ids, so it must not be cleared here) - reset
-    // both registries so a long-lived SPA session (the anti-detection targets
-    // this is built for) doesn't accumulate one entry per analyze call for as
-    // long as the tab stays open.
-    this.elementRegistry.clear();
-    this.quickRegistry.clear();
 
     // Detect page type and get basic metrics
     const pageType = this.detectPageType();
@@ -1303,6 +1299,22 @@ class BrowserAutomation {
     const id = `element_${++this.idCounter}`;
     this.elementRegistry.set(id, element);
     return id;
+  }
+
+  // Runs at the start of every analyze call. Drops ids whose node the page
+  // removed, then the oldest past the cap. Live ids from earlier calls keep
+  // working, so "discover username, discover password, fill the first" holds.
+  pruneRegistries() {
+    for (const registry of [this.elementRegistry, this.quickRegistry]) {
+      for (const [id, element] of registry) {
+        if (!element.isConnected) registry.delete(id);
+      }
+      // a Map iterates in insertion order, so this evicts the oldest first
+      for (const id of registry.keys()) {
+        if (registry.size <= MAX_REGISTRY_ENTRIES) break;
+        registry.delete(id);
+      }
+    }
   }
 
   getElementById(id) {
