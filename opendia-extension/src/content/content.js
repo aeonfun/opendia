@@ -46,6 +46,8 @@ const ANTI_DETECTION_PLATFORMS = {
   },
 };
 
+// Upper bound per element registry, so a long-lived tab can't grow it forever.
+const MAX_REGISTRY_ENTRIES = 1000;
 
 class BrowserAutomation {
   constructor() {
@@ -418,6 +420,8 @@ class BrowserAutomation {
     element_ids,
     max_results = 5,
   }) {
+    this.pruneRegistries();
+
     // The phase enum is discover|detailed on both sides of the wire, so the
     // dispatch is total.
     if (phase === "detailed") {
@@ -1297,13 +1301,36 @@ class BrowserAutomation {
     return id;
   }
 
+  // Runs at the start of every analyze call. Drops ids whose node the page
+  // removed, then the oldest past the cap. Live ids from earlier calls keep
+  // working, so "discover username, discover password, fill the first" holds.
+  pruneRegistries() {
+    for (const registry of [this.elementRegistry, this.quickRegistry]) {
+      for (const [id, element] of registry) {
+        if (!element.isConnected) registry.delete(id);
+      }
+      // a Map iterates in insertion order, so this evicts the oldest first
+      for (const id of registry.keys()) {
+        if (registry.size <= MAX_REGISTRY_ENTRIES) break;
+        registry.delete(id);
+      }
+    }
+  }
+
   getElementById(id) {
     // Check quick registry first (for q1, q2, etc.)
-    if (id.startsWith("q")) {
-      return this.quickRegistry.get(id);
+    const element = id.startsWith("q")
+      ? this.quickRegistry.get(id)
+      // Then check main registry (for element_1, element_2, etc.)
+      : this.elementRegistry.get(id);
+    // A client-side route change (content scripts persist across it, unlike a
+    // full page load) can leave a registered id pointing at a node the page
+    // itself already removed. Treat that the same as a cache miss rather than
+    // handing a detached node back to a caller expecting a live element.
+    if (element && !element.isConnected) {
+      return undefined;
     }
-    // Then check main registry (for element_1, element_2, etc.)
-    return this.elementRegistry.get(id);
+    return element;
   }
 
   getElementName(element) {
