@@ -1,0 +1,51 @@
+{
+  "version": "v1.1.0",
+  "entity": {
+    "type": "organisation",
+    "role": "owner",
+    "name": "Aeon Inc",
+    "email": "aaron@aeon.fun",
+    "description": "Aeon Inc maintains OpenDia, an open-source MCP server and browser extension that connects AI models to the user's real browser. We are a small team of three, founded by Aaron Elijah Mars, and we also build the Aeon autonomous agent framework.",
+    "webpageUrl": {
+      "url": "https://github.com/aeonfun"
+    }
+  },
+  "projects": [
+    {
+      "guid": "opendia",
+      "name": "OpenDia",
+      "description": "OpenDia connects AI models (Claude, ChatGPT, Cursor and any MCP client) to the browser you already use - Chrome, Arc, Firefox and other Chromium browsers - with your real sessions, tabs, bookmarks and history. It ships as an MCP server on npm and a browser extension, and runs fully locally. Funding pays for ongoing maintenance, security hardening of the extension and MCP server, support for new browsers and MCP clients, and faster response to issues and pull requests.",
+      "webpageUrl": {
+        "url": "https://github.com/aeonfun/opendia"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/aeonfun/opendia"
+      },
+      "licenses": ["spdx:MIT"],
+      "tags": ["mcp", "browser-automation", "browser-extension", "ai", "llm", "chrome-extension", "developer-tools"]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "bank-transfer",
+        "type": "bank",
+        "address": "",
+        "description": "International bank transfer to Aeon Inc. Bank details are shared privately on request."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "maintenance-yearly",
+        "status": "active",
+        "name": "OpenDia maintenance and development",
+        "description": "Covers a part-time maintainer for OpenDia: issue and PR triage, releases, security fixes, and support for new browsers and MCP clients.",
+        "amount": 50000,
+        "currency": "USD",
+        "frequency": "yearly",
+        "channels": ["bank-transfer"]
+      }
+    ],
+    "history": []
+  }
+}
