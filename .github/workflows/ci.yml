@@ -8,7 +8,7 @@ on:
 jobs:
   mcp:
     name: MCP server
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.repository_owner == 'aeonfun' && 'blacksmith-2vcpu-ubuntu-2404' || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: opendia-mcp
@@ -31,7 +31,7 @@ jobs:
 
   extension:
     name: Browser extension
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.repository_owner == 'aeonfun' && 'blacksmith-2vcpu-ubuntu-2404' || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: opendia-extension
