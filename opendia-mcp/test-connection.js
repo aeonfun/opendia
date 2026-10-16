@@ -14,8 +14,8 @@ const WebSocket = require('ws');
 const { sleep, makeAsserter, startServer } = require('./test-helpers');
 
 const BACKGROUND = path.join(__dirname, '..', 'opendia-extension', 'src', 'background', 'background.js');
-const WS_PORT = 45553;
-const HTTP_PORT = 45554;
+const WS_PORT = 27553;
+const HTTP_PORT = 27554;
 
 const { assert, state } = makeAsserter();
 
