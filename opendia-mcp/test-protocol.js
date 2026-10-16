@@ -8,8 +8,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const { sleep, makeAsserter, startServer } = require('./test-helpers');
 
-const WS_PORT = 45551;
-const HTTP_PORT = 45552;
+const WS_PORT = 27551;
+const HTTP_PORT = 27552;
 
 const { assert, state } = makeAsserter();
 

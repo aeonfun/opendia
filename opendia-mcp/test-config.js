@@ -64,30 +64,30 @@ function runSync(env) {
 
 async function run() {
   // --- Env ports are used when no flag is given ---
-  await withServer({ args: [], env: { OPENDIA_WS_PORT: '45561', OPENDIA_HTTP_PORT: '45562' } },
+  await withServer({ args: [], env: { OPENDIA_WS_PORT: '27561', OPENDIA_HTTP_PORT: '27562' } },
     async (srv) => {
-      assert('env ports bind', srv.wsPort === 45561 && srv.httpPort === 45562,
+      assert('env ports bind', srv.wsPort === 27561 && srv.httpPort === 27562,
         `ws=${srv.wsPort} http=${srv.httpPort}`);
       const { body } = await getJson(srv.httpPort, '/ports');
-      assert('/ports reports the env ports', body.websocket === 45561 && body.http === 45562,
+      assert('/ports reports the env ports', body.websocket === 27561 && body.http === 27562,
         JSON.stringify(body));
     });
 
   // --- Flags win over env ---
   await withServer({
-    args: ['--ws-port=45563', '--http-port=45564'],
-    env: { OPENDIA_WS_PORT: '45561', OPENDIA_HTTP_PORT: '45562' },
+    args: ['--ws-port=27563', '--http-port=27564'],
+    env: { OPENDIA_WS_PORT: '27561', OPENDIA_HTTP_PORT: '27562' },
   }, async (srv) => {
-    assert('--ws-port/--http-port override env', srv.wsPort === 45563 && srv.httpPort === 45564,
+    assert('--ws-port/--http-port override env', srv.wsPort === 27563 && srv.httpPort === 27564,
       `ws=${srv.wsPort} http=${srv.httpPort}`);
   });
 
   await withServer({
-    args: ['--port=45565'],
-    env: { OPENDIA_WS_PORT: '45561', OPENDIA_HTTP_PORT: '45562' },
+    args: ['--port=27565'],
+    env: { OPENDIA_WS_PORT: '27561', OPENDIA_HTTP_PORT: '27562' },
   }, async (srv) => {
     assert('--port overrides both env ports (http = port+1)',
-      srv.wsPort === 45565 && srv.httpPort === 45566, `ws=${srv.wsPort} http=${srv.httpPort}`);
+      srv.wsPort === 27565 && srv.httpPort === 27566, `ws=${srv.wsPort} http=${srv.httpPort}`);
   });
 
   // --- Bad env ports fail with a usage error ---
@@ -100,7 +100,7 @@ async function run() {
 
   // --- Tunnel + token from env ---
   await withServer({
-    args: ['--ws-port=45567', '--http-port=45568'],
+    args: ['--ws-port=27567', '--http-port=27568'],
     env: { ...NO_NGROK, OPENDIA_ENABLE_TUNNEL: 'Yes', OPENDIA_TOKEN: 'env-token-123' },
   }, async (srv) => {
     await sleep(300);
@@ -111,7 +111,7 @@ async function run() {
   });
 
   await withServer({
-    args: ['--ws-port=45567', '--http-port=45568', '--token=flag-token-456'],
+    args: ['--ws-port=27567', '--http-port=27568', '--token=flag-token-456'],
     env: { ...NO_NGROK, OPENDIA_ENABLE_TUNNEL: 'true', OPENDIA_TOKEN: 'env-token-123' },
   }, async (srv) => {
     assert('--token overrides OPENDIA_TOKEN', srv.stderr().includes('/sse token: flag-token-456'));
@@ -121,7 +121,7 @@ async function run() {
   // way the server must generate a token rather than adopt the literal.
   for (const blank of ['', '${user_config.auth_token}']) {
     await withServer({
-      args: ['--ws-port=45567', '--http-port=45568'],
+      args: ['--ws-port=27567', '--http-port=27568'],
       env: { ...NO_NGROK, OPENDIA_ENABLE_TUNNEL: '1', OPENDIA_TOKEN: blank },
     }, async (srv) => {
       const token = srv.stderr().match(/\/sse token: (\S+)/)?.[1];
@@ -131,7 +131,7 @@ async function run() {
   }
 
   await withServer({
-    args: ['--ws-port=45567', '--http-port=45568'],
+    args: ['--ws-port=27567', '--http-port=27568'],
     env: { ...NO_NGROK, OPENDIA_ENABLE_TUNNEL: 'false', OPENDIA_TOKEN: 'env-token-123' },
   }, async (srv) => {
     const out = srv.stderr();
