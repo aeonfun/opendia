@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "fs-extra": "^11.4.1",
-    "web-ext": "^10.7.0"
+    "web-ext": "^10.8.0"
   },
   "overrides": {
     "brace-expansion": "^1.1.21",
