@@ -5,8 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   mcp:
+    timeout-minutes: 15
     name: MCP server
     runs-on: ubuntu-latest
     defaults:
@@ -30,6 +35,7 @@ jobs:
         run: node test-config.js
 
   extension:
+    timeout-minutes: 15
     name: Browser extension
     runs-on: ubuntu-latest
     defaults:
