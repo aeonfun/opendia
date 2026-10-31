@@ -7,6 +7,7 @@ permissions:
   id-token: write
 jobs:
   test:
+    timeout-minutes: 30
     name: MCP server
     runs-on: ubuntu-latest
     defaults:
@@ -28,6 +29,7 @@ jobs:
         run: node test-connection.js
 
   publish:
+    timeout-minutes: 30
     needs: [test]
     runs-on: ubuntu-latest
     defaults:
