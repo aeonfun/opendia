@@ -12,8 +12,14 @@ concurrency:
 jobs:
   mcp:
     timeout-minutes: 15
-    name: MCP server
+    # Node 20 is end of life (2026-04-30): test both current LTS lines. The
+    # Node 22 leg keeps the plain job name, which branch protection requires.
+    name: ${{ matrix.node == 22 && 'MCP server' || format('MCP server (node {0})', matrix.node) }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     defaults:
       run:
         working-directory: opendia-mcp
@@ -21,7 +27,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: opendia-mcp/package-lock.json
       - run: npm ci
@@ -36,8 +42,12 @@ jobs:
 
   extension:
     timeout-minutes: 15
-    name: Browser extension
+    name: ${{ matrix.node == 22 && 'Browser extension' || format('Browser extension (node {0})', matrix.node) }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     defaults:
       run:
         working-directory: opendia-extension
@@ -45,7 +55,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: opendia-extension/package-lock.json
       - run: npm ci
