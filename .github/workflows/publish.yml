@@ -2,9 +2,10 @@ name: publish
 on:
   push:
     tags: ["v*"]
+# Read-only by default. Only the publish job gets id-token: write, so the test
+# job (npm ci of third-party deps + test scripts) cannot mint an OIDC token.
 permissions:
   contents: read
-  id-token: write
 jobs:
   test:
     timeout-minutes: 30
@@ -17,7 +18,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: opendia-mcp/package-lock.json
       - run: npm ci
@@ -32,6 +33,9 @@ jobs:
     timeout-minutes: 30
     needs: [test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: opendia-mcp
@@ -41,7 +45,12 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      # OIDC trusted publishing needs npm >= 11.5
-      - run: npm install -g npm@latest
+      # OIDC trusted publishing needs npm >= 11.5. Node 24 bundles it, so check
+      # the version instead of pulling an unpinned npm@latest at release time.
+      - name: Check npm supports trusted publishing
+        run: |
+          v=$(npm --version)
+          echo "npm $v"
+          node -e 'const [a,b]=process.argv[1].split(".").map(Number); process.exit(a>11||(a===11&&b>=5)?0:1)' "$v" || { echo "::error::npm $v is older than 11.5, OIDC publish would fail"; exit 1; }
       # Auth via OIDC trusted publishing (configured on npmjs.com) — no token
       - run: npm publish --provenance --access public
