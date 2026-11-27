@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../docs/assets/hero-animated.svg" alt="OpenDia — connect your browser to AI models. The open alternative to Dia / Perplexity Comet: 18 browser tools over MCP, works on any Chromium browser and Firefox, private and local-first." width="100%" />
+  <img src="../docs/assets/readme-hero.jpg" alt="OpenDia - connect your browser to AI models. The open alternative to Dia / Perplexity Comet: 18 browser tools over MCP, works on any Chromium browser and Firefox, private and local-first." width="100%" />
 </p>
 
 <p align="center">
@@ -7,12 +7,12 @@
   <a href="https://github.com/aeonfun/opendia/stargazers"><img src="../docs/assets/btn-star.svg" alt="Star OpenDia on GitHub" height="34" align="absmiddle"></a>&nbsp;&nbsp;
   <a href="https://www.npmjs.com/package/opendia"><img src="../docs/assets/btn-npm.svg" alt="opendia on npm" height="34" align="absmiddle"></a>&nbsp;&nbsp;
   <a href="https://x.com/aeonframework"><img src="../docs/assets/btn-x.svg" alt="@aeonframework on X" height="34" align="absmiddle"></a>&nbsp;&nbsp;
-  <a href="https://bankr.bot/discover/0xbf8e8f0e8866a7052f948c16508644347c57aba3"><img src="../docs/assets/btn-bankr.svg" alt="$aeon on Bankr" height="34" align="absmiddle"></a>
+  <a href="https://bankr.bot/discover/0xbf8e8f0e8866a7052f948c16508644347c57aba3"><img src="../docs/assets/btn-bankr.svg" alt="$AEON on Bankr" height="34" align="absmiddle"></a>
 </p>
 
 <p align="center">
   <strong>The open alternative to Dia / Perplexity Comet.</strong><br>
-  Connect your browser to AI models &mdash; no browser switching needed.<br>
+  Connect your browser to AI models - no browser switching needed.<br>
   Works seamlessly with Chrome, Firefox, and any Chromium browser. Private, local-first &amp; MCP focused.
 </p>
 
